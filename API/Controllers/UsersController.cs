@@ -1,3 +1,4 @@
+using API.Controllers;
 using API.Data;
 using API.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -5,9 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API;
 
-[ApiController]
-[Route("api/[controller]")] // /api/users
-public class UsersController(DataContext context) : ControllerBase
+public class UsersController(DataContext context) : BaseApiController
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AppUser>>> GetUsers()
