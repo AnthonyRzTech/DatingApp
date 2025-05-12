@@ -1,0 +1,22 @@
+/* var --s: size of patterns */
+
+@keyframes waveMoves {
+  0% {
+    background-size: calc(var(--s) - 3px) calc(var(--s) - 3px);
+  }
+  50% {
+    background-size: var(--s) var(--s);
+  }
+  100% {
+    background-size: calc(var(--s) - 3px) calc(var(--s) - 3px);
+  }
+}
+
+@keyframes scroll {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 calc(var(--s) - 3px);
+  }
+}
