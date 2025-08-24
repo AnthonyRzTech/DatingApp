@@ -1,0 +1,170 @@
+﻿@page "/"
+@using WebMatcha.Services
+@using WebMatcha.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<MatchaDbContext> DbFactory
+@rendermode InteractiveServer
+
+<PageTitle>WebMatcha - Dating App</PageTitle>
+
+<div class="container-fluid px-4">
+    <div class="row justify-content-center mt-5">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient-primary text-white text-center py-5">
+                    <h1 class="display-3 fw-bold mb-3">
+                        <i class="bi bi-heart-fill text-danger"></i> WebMatcha
+                    </h1>
+                    <p class="lead mb-0">Find Your Perfect Match</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div class="alert alert-success mb-4">
+                        <h5 class="alert-heading"><i class="bi bi-database me-2"></i>Database Connected</h5>
+                        <p class="mb-0">
+                            <strong>@userCount</strong> users • 
+                            <strong>@matchCount</strong> matches • 
+                            <strong>@likeCount</strong> likes • 
+                            <strong>@notificationCount</strong> notifications
+                        </p>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-person-plus-fill text-primary display-4 mb-3"></i>
+                                    <h4>Registration</h4>
+                                    <p class="text-muted">Sign up with email verification and create your profile</p>
+                                    <a href="/register" class="btn btn-primary">
+                                        Register Now
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-box-arrow-in-right text-success display-4 mb-3"></i>
+                                    <h4>Login</h4>
+                                    <p class="text-muted">Access your account and start matching</p>
+                                    <a href="/login" class="btn btn-success">
+                                        Login
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-search-heart text-warning display-4 mb-3"></i>
+                                    <h4>Browse Profiles</h4>
+                                    <p class="text-muted">Discover people near you with similar interests</p>
+                                    <a href="/browse" class="btn btn-warning">
+                                        Browse
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-chat-heart-fill text-danger display-4 mb-3"></i>
+                                    <h4>Chat</h4>
+                                    <p class="text-muted">Real-time messaging with your matches</p>
+                                    <a href="/chat" class="btn btn-danger">
+                                        Open Chat
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-5">
+
+                    <h3 class="text-center mb-4">Required Features (subject.md)</h3>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="bi bi-envelope-check text-success fs-3"></i>
+                                <h6 class="mt-2">Email Verification</h6>
+                                <small class="text-muted">Account activation via email</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="bi bi-person-badge text-primary fs-3"></i>
+                                <h6 class="mt-2">Profile System</h6>
+                                <small class="text-muted">Photos, bio, interests tags</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="bi bi-geo-alt-fill text-info fs-3"></i>
+                                <h6 class="mt-2">Geolocation</h6>
+                                <small class="text-muted">GPS or IP-based location</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="bi bi-heart text-danger fs-3"></i>
+                                <h6 class="mt-2">Like System</h6>
+                                <small class="text-muted">Mutual likes = Match</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="bi bi-bell-fill text-warning fs-3"></i>
+                                <h6 class="mt-2">Real-time Notifications</h6>
+                                <small class="text-muted">Max 10 sec delay</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="bi bi-shield-lock text-secondary fs-3"></i>
+                                <h6 class="mt-2">Security</h6>
+                                <small class="text-muted">BCrypt, XSS/CSRF protection</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .feature-box {
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+    
+    .feature-box:hover {
+        background-color: #f8f9fa;
+        transform: translateY(-5px);
+    }
+</style>
+
+@code {
+    private int userCount = 0;
+    private int matchCount = 0;
+    private int likeCount = 0;
+    private int notificationCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        
+        userCount = await context.Users.CountAsync();
+        matchCount = await context.Matches.CountAsync();
+        likeCount = await context.Likes.CountAsync();
+        notificationCount = await context.Notifications.CountAsync();
+    }
+}

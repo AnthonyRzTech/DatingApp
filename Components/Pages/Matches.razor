@@ -1,0 +1,172 @@
+@page "/matches"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@inject MockDataService DataService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>My Matches - WebMatcha</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4"><i class="bi bi-heart-fill text-danger"></i> Your Matches</h2>
+    
+    @if (matches.Any())
+    {
+        <div class="row">
+            @foreach (var match in matches)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="position-relative">
+                            <img src="@match.ProfilePhotoUrl" class="card-img-top" alt="@match.FirstName" style="height: 300px; object-fit: cover;">
+                            @if (match.IsOnline)
+                            {
+                                <span class="position-absolute top-0 end-0 m-2 badge bg-success">
+                                    <i class="bi bi-circle-fill"></i> Online
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="position-absolute top-0 end-0 m-2 badge bg-secondary">
+                                    Last seen @GetTimeAgo(match.LastSeen)
+                                </span>
+                            }
+                            <div class="position-absolute bottom-0 start-0 end-0 p-3 text-white" style="background: linear-gradient(transparent, rgba(0,0,0,0.8));">
+                                <h5 class="mb-0">@match.FirstName, @match.Age</h5>
+                                <small><i class="bi bi-geo-alt"></i> @Math.Round(match.Distance ?? 0, 1) km away</small>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">@match.Biography</p>
+                            <div class="mb-3">
+                                @foreach (var tag in match.InterestTags.Take(4))
+                                {
+                                    <span class="badge bg-primary me-1">@tag</span>
+                                }
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo($"/chat?user={match.Id}")'>
+                                    <i class="bi bi-chat-heart"></i> Send Message
+                                </button>
+                                <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo($"/profile/{match.Id}")'>
+                                    <i class="bi bi-person"></i> View Profile
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => UnmatchUser(match.Id)">
+                                    <i class="bi bi-x-circle"></i> Unmatch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-heart display-1 text-muted"></i>
+            <h4 class="mt-3">No matches yet</h4>
+            <p class="text-muted">When you and another person like each other, you'll be matched!</p>
+            <a href="/browse" class="btn btn-primary mt-3">
+                <i class="bi bi-search"></i> Browse Profiles
+            </a>
+        </div>
+    }
+    
+    <hr class="my-5" />
+    
+    <h3 class="mb-4"><i class="bi bi-heart text-warning"></i> People Who Like You</h3>
+    
+    @if (likedByUsers.Any())
+    {
+        <div class="row">
+            @foreach (var user in likedByUsers)
+            {
+                <div class="col-md-4 col-lg-3 mb-3">
+                    <div class="card">
+                        <img src="@user.ProfilePhotoUrl" class="card-img-top" alt="@user.FirstName" style="height: 200px; object-fit: cover;">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">@user.FirstName, @user.Age</h6>
+                            <div class="text-warning mb-2">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    @if (i <= user.FameRating)
+                                    {
+                                        <i class="bi bi-star-fill small"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-star small"></i>
+                                    }
+                                }
+                            </div>
+                            @if (DataService.IsMatched(user.Id))
+                            {
+                                <span class="badge bg-success">Matched</span>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-danger" @onclick="() => LikeBack(user.Id)">
+                                    <i class="bi bi-heart-fill"></i> Like Back
+                                </button>
+                            }
+                            <a href="/profile/@user.Id" class="btn btn-sm btn-outline-primary mt-1">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No one has liked you yet. Keep browsing and updating your profile!
+        </div>
+    }
+</div>
+
+@code {
+    private List<User> matches = new();
+    private List<User> likedByUsers = new();
+    
+    protected override void OnInitialized()
+    {
+        LoadMatches();
+    }
+    
+    private void LoadMatches()
+    {
+        matches = DataService.GetMatches();
+        likedByUsers = DataService.GetLikedByUsers();
+    }
+    
+    private void UnmatchUser(int userId)
+    {
+        DataService.UnlikeUser(userId);
+        LoadMatches();
+    }
+    
+    private void LikeBack(int userId)
+    {
+        DataService.LikeUser(userId);
+        LoadMatches();
+    }
+    
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.Now - dateTime;
+        
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        
+        return dateTime.ToString("MMM dd");
+    }
+}

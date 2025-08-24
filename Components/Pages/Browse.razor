@@ -1,0 +1,278 @@
+@page "/browse"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@using Microsoft.EntityFrameworkCore
+@using WebMatcha.Data
+@inject UserService UserService
+@inject MatchingService MatchingService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<MatchaDbContext> DbFactory
+@rendermode InteractiveServer
+
+<PageTitle>Browse Profiles - WebMatcha</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-warning text-dark">
+                    <h5><i class="bi bi-funnel"></i> Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Sort By</label>
+                        <select class="form-select" @onchange="OnSortChange">
+                            <option value="distance">Distance</option>
+                            <option value="age">Age</option>
+                            <option value="fame">Fame Rating</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Age Range</label>
+                        <input type="range" class="form-range" min="18" max="100" @bind="maxAge" @bind:event="oninput" />
+                        <small class="text-muted">18 - @maxAge</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Max Distance</label>
+                        <input type="range" class="form-range" min="1" max="100" @bind="maxDistance" @bind:event="oninput" />
+                        <small class="text-muted">Up to @maxDistance km</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Min Fame Rating</label>
+                        <input type="range" class="form-range" min="0" max="5" @bind="minFame" @bind:event="oninput" />
+                        <div class="text-warning">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                @if (i <= minFame)
+                                {
+                                    <i class="bi bi-star-fill"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-star"></i>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <button class="btn btn-warning w-100" @onclick="ApplyFilters">
+                        <i class="bi bi-funnel"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-search-heart"></i> Browse Profiles</h3>
+                <span class="badge bg-primary">@filteredUsers.Count profiles found</span>
+            </div>
+            
+            <div class="row">
+                @foreach (var user in filteredUsers)
+                {
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="position-relative">
+                                <img src="@user.ProfilePhotoUrl" class="card-img-top" alt="@user.FirstName" style="height: 250px; object-fit: cover;">
+                                @if (user.IsOnline)
+                                {
+                                    <span class="position-absolute top-0 end-0 m-2 badge bg-success">
+                                        <i class="bi bi-circle-fill"></i> Online
+                                    </span>
+                                }
+                                <span class="position-absolute bottom-0 start-0 m-2 badge bg-dark">
+                                    <i class="bi bi-geo-alt"></i> @Math.Round(user.Distance ?? 0, 1) km
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">@user.FirstName, @user.Age</h5>
+                                <div class="text-warning mb-2">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        @if (i <= (user.FameRating / 20))
+                                        {
+                                            <i class="bi bi-star-fill"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-star"></i>
+                                        }
+                                    }
+                                </div>
+                                <p class="card-text text-truncate">@user.Biography</p>
+                                <div class="mb-2">
+                                    @foreach (var tag in user.InterestTags.Take(3))
+                                    {
+                                        <span class="badge bg-secondary me-1">@tag</span>
+                                    }
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    @if (IsMatched(user.Id))
+                                    {
+                                        <button class="btn btn-sm btn-success" disabled>
+                                            <i class="bi bi-check-circle"></i> Matched
+                                        </button>
+                                    }
+                                    else if (IsLiked(user.Id))
+                                    {
+                                        <button class="btn btn-sm btn-danger" @onclick="async () => await UnlikeUser(user.Id)">
+                                            <i class="bi bi-heart-fill"></i> Liked
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="async () => await LikeUser(user.Id)">
+                                            <i class="bi bi-heart"></i> Like
+                                        </button>
+                                    }
+                                    <button class="btn btn-sm btn-outline-primary" @onclick='() => Navigation.NavigateTo($"/profile/{user.Id}")'>
+                                        <i class="bi bi-eye"></i> View Profile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            @if (!filteredUsers.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <p class="mt-3 text-muted">No profiles found matching your criteria</p>
+                    <button class="btn btn-primary" @onclick="ResetFilters">Reset Filters</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<User> allUsers = new();
+    private List<User> filteredUsers = new();
+    private Dictionary<int, bool> likedUsers = new();
+    private Dictionary<int, bool> matchedUsers = new();
+    private int maxAge = 100;
+    private int maxDistance = 100;
+    private int minFame = 0;
+    private string sortBy = "distance";
+    // Temporary current user ID - will be replaced with actual auth later
+    private int currentUserId = 1;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+    
+    private async Task LoadUsers()
+    {
+        // Get all users from database
+        allUsers = await UserService.GetAllUsersAsync();
+        
+        // Remove current user from list
+        allUsers = allUsers.Where(u => u.Id != currentUserId).ToList();
+        
+        // Calculate distances (temporary - using Paris coordinates)
+        var currentLat = 48.8566;
+        var currentLon = 2.3522;
+        
+        foreach (var user in allUsers)
+        {
+            user.Distance = CalculateDistance(currentLat, currentLon, user.Latitude, user.Longitude);
+        }
+        
+        // Load likes and matches for current user
+        var likes = await MatchingService.GetUserLikesAsync(currentUserId);
+        likedUsers = likes.ToDictionary(u => u.Id, u => true);
+        
+        var matches = await MatchingService.GetUserMatchesAsync(currentUserId);
+        matchedUsers = matches.ToDictionary(u => u.Id, u => true);
+        
+        ApplyFilters();
+    }
+    
+    private void ApplyFilters()
+    {
+        filteredUsers = allUsers
+            .Where(u => u.Age <= maxAge)
+            .Where(u => (u.Distance ?? 0) <= maxDistance)
+            .Where(u => u.FameRating >= minFame * 20) // Convert stars to fame rating (0-100)
+            .ToList();
+        
+        SortUsers();
+    }
+    
+    private void SortUsers()
+    {
+        filteredUsers = sortBy switch
+        {
+            "age" => filteredUsers.OrderBy(u => u.Age).ToList(),
+            "fame" => filteredUsers.OrderByDescending(u => u.FameRating).ToList(),
+            _ => filteredUsers.OrderBy(u => u.Distance ?? 0).ToList()
+        };
+    }
+    
+    private void OnSortChange(ChangeEventArgs e)
+    {
+        sortBy = e.Value?.ToString() ?? "distance";
+        SortUsers();
+    }
+    
+    private void ResetFilters()
+    {
+        maxAge = 100;
+        maxDistance = 100;
+        minFame = 0;
+        sortBy = "distance";
+        ApplyFilters();
+    }
+    
+    private async Task LikeUser(int userId)
+    {
+        await MatchingService.LikeUserAsync(currentUserId, userId);
+        likedUsers[userId] = true;
+        
+        // Check if it's now a match
+        if (await MatchingService.IsMatchedAsync(currentUserId, userId))
+        {
+            matchedUsers[userId] = true;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task UnlikeUser(int userId)
+    {
+        await MatchingService.UnlikeUserAsync(currentUserId, userId);
+        likedUsers.Remove(userId);
+        matchedUsers.Remove(userId);
+        StateHasChanged();
+    }
+    
+    private bool IsLiked(int userId)
+    {
+        return likedUsers.ContainsKey(userId);
+    }
+    
+    private bool IsMatched(int userId)
+    {
+        return matchedUsers.ContainsKey(userId);
+    }
+    
+    private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double R = 6371;
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c;
+    }
+    
+    private double ToRadians(double degrees)
+    {
+        return degrees * (Math.PI / 180);
+    }
+}

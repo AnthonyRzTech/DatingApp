@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@using WebMatcha.Services
+
+<div class="page d-flex flex-column min-vh-100">
+    <!-- Header -->
+    <header class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="">
+                <i class="bi bi-heart-fill text-danger me-2"></i>
+                WebMatcha
+            </a>
+            
+            <!-- Mobile toggle -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <AuthNavMenu />
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="flex-grow-1">
+        <div class="container-fluid py-4">
+            @Body
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="fw-bold">
+                        <i class="bi bi-heart-fill text-danger me-2"></i>
+                        WebMatcha
+                    </h5>
+                    <p class="mb-2">Find your perfect match with our intelligent dating platform.</p>
+                    <p class="text-muted small mb-0">&copy; @DateTime.Now.Year WebMatcha. All rights reserved.</p>
+                </div>
+                <div class="col-md-3">
+                    <h6>Features</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="/browse" class="text-light text-decoration-none">Smart Browsing</a></li>
+                        <li><a href="/matches" class="text-light text-decoration-none">Instant Matching</a></li>
+                        <li><a href="/chat" class="text-light text-decoration-none">Real-time Chat</a></li>
+                        <li><a href="/profile" class="text-light text-decoration-none">Profile Builder</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6>Support</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="/help" class="text-light text-decoration-none">Help Center</a></li>
+                        <li><a href="/safety" class="text-light text-decoration-none">Safety Tips</a></li>
+                        <li><a href="/privacy" class="text-light text-decoration-none">Privacy Policy</a></li>
+                        <li><a href="/terms" class="text-light text-decoration-none">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+

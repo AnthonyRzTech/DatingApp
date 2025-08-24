@@ -1,0 +1,335 @@
+@page "/profile/{UserId:int?}"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@inject UserService UserService
+@inject MatchingService MatchingService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(user?.FirstName ?? "Profile") - WebMatcha</PageTitle>
+
+@if (user == null)
+{
+    <div class="container mt-5">
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> User not found
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="position-relative">
+                        <img src="@user.ProfilePhotoUrl" class="card-img-top" alt="@user.FirstName" style="height: 400px; object-fit: cover;">
+                        @if (user.IsOnline)
+                        {
+                            <span class="position-absolute top-0 end-0 m-2 badge bg-success">
+                                <i class="bi bi-circle-fill"></i> Online
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="position-absolute top-0 end-0 m-2 badge bg-secondary">
+                                Last seen: @user.LastSeen.ToString("MMM dd, HH:mm")
+                            </span>
+                        }
+                    </div>
+                    
+                    <div class="card-body">
+                        <h3 class="card-title">@user.FirstName @user.LastName, @user.Age</h3>
+                        
+                        <div class="mb-3">
+                            <div class="text-warning mb-2">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    @if (i <= (user.FameRating / 20))
+                                    {
+                                        <i class="bi bi-star-fill"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-star"></i>
+                                    }
+                                }
+                                <span class="text-muted ms-2">(@user.FameRating.0)</span>
+                            </div>
+                            
+                            @if (user.Distance.HasValue)
+                            {
+                                <p class="text-muted mb-2">
+                                    <i class="bi bi-geo-alt"></i> @Math.Round(user.Distance.Value, 1) km away
+                                </p>
+                            }
+                            
+                            <p class="text-muted mb-2">
+                                <i class="bi bi-gender-ambiguous"></i> @user.Gender | Interested in @user.SexualPreference
+                            </p>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            @if (UserId != currentUserId)
+                            {
+                                @if (isMatched)
+                                {
+                                    <button class="btn btn-success" disabled>
+                                        <i class="bi bi-check-circle"></i> Matched
+                                    </button>
+                                    <button class="btn btn-outline-danger" @onclick="async () => await UnlikeUser()">
+                                        <i class="bi bi-x-circle"></i> Unmatch
+                                    </button>
+                                }
+                                else if (isLiked)
+                                {
+                                    <button class="btn btn-danger" @onclick="async () => await UnlikeUser()">
+                                        <i class="bi bi-heart-fill"></i> Liked
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-outline-danger" @onclick="async () => await LikeUser()">
+                                        <i class="bi bi-heart"></i> Like
+                                    </button>
+                                }
+                                
+                                <button class="btn btn-outline-warning" @onclick="() => showReportModal = true">
+                                    <i class="bi bi-flag"></i> Report
+                                </button>
+                                
+                                <button class="btn btn-outline-secondary" @onclick="BlockUser">
+                                    <i class="bi bi-slash-circle"></i> Block
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/edit-profile")'>
+                                    <i class="bi bi-pencil"></i> Edit Profile
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Interests</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var tag in user.InterestTags)
+                            {
+                                <span class="badge bg-primary">@tag</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">About Me</h5>
+                        <p class="card-text">@user.Biography</p>
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Photos</h5>
+                        <div class="row g-2">
+                            @foreach (var photo in user.PhotoUrls)
+                            {
+                                <div class="col-md-4">
+                                    <img src="@photo" class="img-fluid rounded" alt="Photo" @onclick="() => ShowFullImage(photo)" style="cursor: pointer; height: 200px; object-fit: cover; width: 100%;">
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                
+                @if (UserId == currentUserId)
+                {
+                    <div class="card shadow-sm mt-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Who's Interested</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Recent Likes (@likedByUsers.Count)</h6>
+                                    <div class="list-group">
+                                        @foreach (var liker in likedByUsers.Take(5))
+                                        {
+                                            <a href="/profile/@liker.Id" class="list-group-item list-group-item-action">
+                                                <div class="d-flex align-items-center">
+                                                    <img src="@liker.ProfilePhotoUrl" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                                    <div>
+                                                        <strong>@liker.FirstName</strong>, @liker.Age
+                                                        <br />
+                                                        <small class="text-muted">@liker.Biography</small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Profile Views (@viewedByUsers.Count)</h6>
+                                    <div class="list-group">
+                                        @foreach (var viewer in viewedByUsers.Take(5))
+                                        {
+                                            <a href="/profile/@viewer.Id" class="list-group-item list-group-item-action">
+                                                <div class="d-flex align-items-center">
+                                                    <img src="@viewer.ProfilePhotoUrl" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                                    <div>
+                                                        <strong>@viewer.FirstName</strong>, @viewer.Age
+                                                        <br />
+                                                        <small class="text-muted">Viewed your profile</small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Report Modal -->
+@if (showReportModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Report User</h5>
+                    <button type="button" class="btn-close" @onclick="() => showReportModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Why are you reporting this user?</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reportReason" id="fake" @onchange='() => reportReason = "Fake profile"'>
+                        <label class="form-check-label" for="fake">Fake profile</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reportReason" id="inappropriate" @onchange='() => reportReason = "Inappropriate content"'>
+                        <label class="form-check-label" for="inappropriate">Inappropriate content</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reportReason" id="spam" @onchange='() => reportReason = "Spam"'>
+                        <label class="form-check-label" for="spam">Spam</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reportReason" id="other" @onchange='() => reportReason = "Other"'>
+                        <label class="form-check-label" for="other">Other</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showReportModal = false">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="async () => await ReportUser()">Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Full Image Modal -->
+@if (!string.IsNullOrEmpty(selectedImage))
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.9);" @onclick="() => selectedImage = null">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <img src="@selectedImage" class="img-fluid" alt="Full size">
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? UserId { get; set; }
+    
+    private User? user;
+    private bool isLiked;
+    private bool isMatched;
+    private bool showReportModal;
+    private string reportReason = "Fake profile";
+    private string? selectedImage;
+    private List<User> likedByUsers = new();
+    private List<User> viewedByUsers = new();
+    // Temporary current user ID - will be replaced with actual auth later
+    private int currentUserId = 1;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadProfile();
+    }
+    
+    private async Task LoadProfile()
+    {
+        var profileId = UserId ?? currentUserId;
+        user = await UserService.GetUserByIdAsync(profileId);
+        
+        if (user != null && UserId.HasValue && UserId != currentUserId)
+        {
+            // Record profile view
+            await MatchingService.RecordProfileViewAsync(currentUserId, UserId.Value);
+            isLiked = await MatchingService.IsLikedAsync(currentUserId, UserId.Value);
+            isMatched = await MatchingService.IsMatchedAsync(currentUserId, UserId.Value);
+        }
+        
+        if (profileId == currentUserId)
+        {
+            likedByUsers = await MatchingService.GetUserLikedByAsync(currentUserId);
+            viewedByUsers = await MatchingService.GetProfileViewersAsync(currentUserId);
+        }
+    }
+    
+    private async Task LikeUser()
+    {
+        if (UserId.HasValue)
+        {
+            await MatchingService.LikeUserAsync(currentUserId, UserId.Value);
+            isLiked = true;
+            isMatched = await MatchingService.IsMatchedAsync(currentUserId, UserId.Value);
+        }
+    }
+    
+    private async Task UnlikeUser()
+    {
+        if (UserId.HasValue)
+        {
+            await MatchingService.UnlikeUserAsync(currentUserId, UserId.Value);
+            isLiked = false;
+            isMatched = false;
+        }
+    }
+    
+    private async Task BlockUser()
+    {
+        if (UserId.HasValue)
+        {
+            await MatchingService.BlockUserAsync(currentUserId, UserId.Value);
+            Navigation.NavigateTo("/browse");
+        }
+    }
+    
+    private async Task ReportUser()
+    {
+        if (UserId.HasValue)
+        {
+            await MatchingService.ReportUserAsync(currentUserId, UserId.Value, reportReason);
+            showReportModal = false;
+        }
+    }
+    
+    private void ShowFullImage(string imageUrl)
+    {
+        selectedImage = imageUrl;
+    }
+}

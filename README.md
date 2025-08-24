@@ -1,411 +1,251 @@
-# 42-matcha
+# WebMatcha 💕
 
-A dating website that allows users to register, log in, complete their profile, search and view the profiles of other users, and show interest in them with a “like”, chat with those that “liked” back.
+A modern dating web application built with ASP.NET Core Blazor Server, featuring real-time chat, smart matching algorithms, and comprehensive user profiles.
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+## 🌟 Features
 
-```mermaid
----
-config:
-  curve: basis
-  htmlLabels: true
----
-flowchart
-  direction TB
-  classDef black fill:#000,stroke:#333,stroke-width:1px;
-  classDef white fill:#fff,color:#555,stroke:#333,stroke-width:1px;
-  classDef white_border fill:#fff,color:#000,stroke:#333,stroke-width:1px, stroke-dasharray: 5, 5;
-  classDef green fill:#0f0,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightblue fill:#99f,color:#fff,stroke:#333,stroke-width:1px;
-  classDef lightgreen fill:#9f9,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightred fill:#f99,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightyellow fill:#ff9,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightorange fill:#f90,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightpurple fill:#f0f,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightcyan fill:#9ff,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightpink fill:#f9f,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightbrown fill:#963,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightgrey fill:#999,color:#555,stroke:#333,stroke-width:1px;
-  classDef lightblack fill:#000,stroke:#333,stroke-width:1px;
-  classDef lightwhite fill:#fff,color:#555,stroke:#333,stroke-width:1px;
+### Core Functionality
+- **User Authentication**: Secure registration and login system with BCrypt password hashing
+- **User Profiles**: Complete profiles with photos, bio, interests, and location
+- **Smart Matching**: Algorithm based on interests, location, and preferences
+- **Real-time Chat**: Live messaging between matched users using SignalR
+- **Notifications**: Instant notifications for likes, matches, and messages
+- **Browse & Discover**: Search and filter users by various criteria
+- **Fame Rating**: Reputation system based on user interactions
 
-  Project:::white_border
-  subgraph Project
-    direction TB
-    WorldWideWeb <-->|"`*80<br>(443)*`"| Nginx
-    WorldWideWeb((fa:fa-globe World Wide<br>Web)):::lightgreen
-    Browser <-->|"`*80<br>(443)*`"| WorldWideWeb
+### Security Features
+- BCrypt password hashing (complexity 12)
+- SQL injection prevention
+- XSS protection
+- CSRF protection
+- Form validation
+- Environment variables for sensitive data
 
-    subgraph Client_Host["fas:fa-laptop-code Client Host"]
-      Browser:::lightcyan
-
-      subgraph Browser["fas:fa-globe Browser"]
-        React_App("fab:fa-react ReactJS<br>App")
-      end
-
-    end
-
-    subgraph Server_Host["fas:fa-computer Server Host"]
-      Docker_Network:::lightblue
-
-      subgraph Docker_Network["fas:fa-network-wired Docker Network"]
-        Postgres("fa:fa-database Postgres<br>Container")
-        Nginx("fa:fa-server Nginx<br>Container")
-        Express_Server("fab:fa-node Express<br>Container")
-        React_Build("fab:fa-react ReactJS<br>Builder")
-      end
-      Nginx <-.->|"`*/api/<br>8000*`"| Express_Server
-      Nginx <-.->|"`*/socket.io/<br>8000*`"| Express_Server
-      Express_Server <-.->|"`*5432*`"| Postgres
-
-    Volume_Postgres[("fas:fa-hdd Postgres<br>Volume")]:::lightorange
-    Postgres <-.-> Volume_Postgres
-    Volume_Client_Build[("fas:fa-hdd Client Build<br>Volume")]:::lightorange
-    React_Build -.-> Volume_Client_Build
-    Nginx -->|"static files"| Volume_Client_Build
-    end
-  end
-
-  linkStyle 0,1 stroke:lightgreen,stroke-width:4px;
-  linkStyle 2,3,4 stroke:lightblue,stroke-width:2px;
-
-```
-
-## Demo
-
-- Homepage: http://localhost
-
-- API: http://localhost/api
-
-## Installation
+## 🚀 Quick Start
 
 ### Prerequisites
+- .NET 9.0 SDK
+- PostgreSQL 14+
+- Node.js (for frontend assets)
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- [Git](https://git-scm.com/downloads)
-- [Node.js](https://nodejs.org/en/download/) (optional, for development)
+### Installation
 
-### Steps
+1. **Clone the repository**
+```bash
+git clone https://github.com/yourusername/WebMatcha.git
+cd WebMatcha
+```
 
-#### Clone the repository
+2. **Set up environment variables**
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+3. **Install dependencies**
+```bash
+dotnet restore
+```
+
+4. **Set up the database**
+```bash
+# Create database
+createdb -U postgres webmatcha
+
+# Run migrations
+dotnet ef database update
+```
+
+5. **Run the application**
+```bash
+dotnet run
+```
+
+The application will be available at:
+- HTTP: http://localhost:5192
+- HTTPS: https://localhost:7036
+
+## 🛠️ Development
+
+### Development Scripts
 
 ```bash
-# Clone the repository
-git clone git@github.com:Tablerase/42_Matcha.git
-cd 42_Matcha
+# Quick development setup with local PostgreSQL
+./dev-local.sh
+
+# Check system status and dependencies
+./run-status.sh
+
+# Run authentication tests
+./test-auth-simple.sh
+
+# Seed database with test data (500 users)
+curl http://localhost:5192/api/seed
 ```
 
-#### Environment Variables
+### Project Structure
 
-Add the `.env` file in the root directory of the project.
+```
+WebMatcha/
+├── Components/           # Blazor components
+│   ├── Layout/          # Layout components (MainLayout, NavMenu)
+│   └── Pages/           # Page components (Login, Register, Browse, etc.)
+├── Data/                # Entity Framework context and configurations
+├── Models/              # Data models and DTOs
+├── Services/            # Business logic services
+├── Hubs/                # SignalR hubs for real-time features
+├── Migrations/          # Database migrations
+├── wwwroot/             # Static files (CSS, JS, images)
+└── WebMatcha.Tests/     # Unit and integration tests
+```
 
+### Key Technologies
+
+- **Framework**: ASP.NET Core 9.0 with Blazor Server
+- **Database**: PostgreSQL with Entity Framework Core
+- **Real-time**: SignalR for chat and notifications
+- **Authentication**: Custom JWT-based authentication (coming soon)
+- **Password Hashing**: BCrypt.Net-Next
+- **Email**: MailKit for email verification
+- **Testing**: xUnit, bUnit, Moq, FluentAssertions
+
+## 📊 Database Schema
+
+### Main Tables
+- `users` - User profiles and information
+- `user_passwords` - Hashed passwords (separate for security)
+- `likes` - User likes/interests
+- `matches` - Mutual matches between users
+- `messages` - Chat messages
+- `notifications` - User notifications
+- `profile_views` - Profile view tracking
+- `blocks` - Blocked users
+- `reports` - User reports
+- `tags` - Interest tags
+- `user_tags` - User-tag relationships
+- `user_photos` - User photo gallery
+
+## 🔐 Authentication System
+
+### Registration
+- Username and email validation
+- Password strength requirements
+- Age verification (18+)
+- Profile completion steps
+
+### Login
+- Session-based authentication (JWT coming soon)
+- Remember me functionality
+- Password reset via email
+
+### Security
+- Passwords hashed with BCrypt (12 rounds)
+- SQL injection prevention via parameterized queries
+- XSS protection through Blazor's built-in sanitization
+- CSRF tokens on forms
+
+## 🧪 Testing
+
+### Run Tests
 ```bash
-.
-├── client
-├── docker-compose.yml
-├── .env
-├── .git
-├── .gitignore
-├── matcha.sh
-├── nginx.conf
-├── README.md
-├── server
-└── .vscode
+# Run unit tests
+cd WebMatcha.Tests
+dotnet test
+
+# Run functional tests
+./test-auth-simple.sh
 ```
 
-```bash
-# Here is an example of the .env file
-echo "
-# Database
+### Test Coverage
+- ✅ Authentication service tests
+- ✅ Registration validation tests
+- ✅ Login flow tests
+- ✅ Password hashing tests
+- ✅ Integration tests
+- ✅ Component tests (Blazor)
 
-POSTGRES_USER=matcha
-POSTGRES_PASSWORD=matcha
-POSTGRES_DB=matcha
-POSTGRES_HOST=database
-DB_PORT=5432
+## 📝 API Endpoints
 
-# Client
+### Public Endpoints
+- `GET /api/health` - Health check
+- `POST /auth/logout` - Logout user
 
-FRONTEND_URL=http://localhost
+### Development Endpoints
+- `GET /api/seed` - Seed database with test data
 
-# Server
+### SignalR Hubs
+- `/hubs/chat` - Real-time chat hub
 
-SOCKET_URL=http://localhost/
-API_URL=http://localhost/api
-SERVER_PORT=8000
-# NODE_ENV=development
-NODE_ENV=production
-TZ=UTC
+## 🎨 UI Features
 
-# JWT
+- **Responsive Design**: Mobile-first approach with Bootstrap 5
+- **Dark Mode**: Coming soon
+- **Interactive Components**: Real-time updates without page refresh
+- **Smooth Animations**: CSS transitions and animations
+- **Accessibility**: ARIA labels and keyboard navigation
 
-JWT_SECRET_KEY=secret
-ACCESS_TOKEN_EXPIRES_IN=1d
-REFRESH_TOKEN_EXPIRES_IN=7d
+## 🚧 Roadmap
 
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email-address
-SMTP_PASS=your-app-password
-"> .env
-```
+### Phase 1 (Complete) ✅
+- [x] Basic authentication system
+- [x] User registration and login
+- [x] Database setup with PostgreSQL
+- [x] Basic UI with Bootstrap
 
-#### Script launch
+### Phase 2 (In Progress) 🔄
+- [ ] JWT authentication
+- [ ] Email verification
+- [ ] Password reset
+- [ ] Complete user profiles
 
-```bash
-./matcha.sh
-```
+### Phase 3 (Planned) 📋
+- [ ] Matching algorithm
+- [ ] Real-time chat
+- [ ] Notifications system
+- [ ] Photo upload with validation
 
-#### Manual launch
+### Phase 4 (Future) 🔮
+- [ ] Advanced search filters
+- [ ] Fame rating system
+- [ ] Report and block features
+- [ ] Admin dashboard
 
-```bash
-# Launch the Docker containers in detached mode
-docker compose up -d
-```
+## 🐛 Known Issues
 
-or
+- Navigation redirect shows both error and success messages (fix in progress)
+- Email verification not working (SMTP server configuration needed)
+- Some build warnings related to nullable references
 
-```bash
-# Launch the Docker containers in attached mode
-docker compose up
-```
+## 🤝 Contributing
 
-## Commands
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-### Nginx
+## 📄 License
 
-```bash
-# Reload Nginx
-docker compose exec nginx nginx -s reload
-```
+This project is part of the 42 School curriculum and follows the academic guidelines.
 
-### Docker
+## 👨‍💻 Authors
 
-```bash
-# Build the Docker containers
-docker compose build
-```
+- WebMatcha Team
 
-```bash
-# Start the Docker containers
-docker compose up -d
-```
+## 🙏 Acknowledgments
 
-```bash
-# Stop the Docker containers
-docker compose down
-```
+- 42 School for the project subject
+- ASP.NET Core team for the excellent framework
+- Bootstrap team for the UI components
+- All contributors and testers
 
-```bash
-# Stop and remove all containers
-docker stop $(docker ps -aq)
-docker rm $(docker ps -aq)
-```
+## 📞 Support
 
-```bash
-# Remove all images
-docker rmi $(docker images -q)
-```
+For issues and questions:
+- Create an issue on GitHub
+- Check the [documentation](./docs/)
+- Review the [subject requirements](./subject.md)
 
-```bash
-# Remove all volumes
-docker volume rm $(docker volume ls -q)
-```
+---
 
-## Users Generation
-
-### Random User API
-
-The Random User API is a free API that allows you to generate random user data. It is a RESTful API that responds with JSON data.
-
-```http
-https://randomuser.me/api/
-```
-
-#### Parameters
-
-[API Documentation - How to use](https://randomuser.me/documentation#howto)
-
-<!-- ## Design
-
-Browse profiles/users with tea bags opening and closing, and a cup of tea that fills up as you scroll down the page.
-
-## User Interface
-
-- MUI (Material-UI)
-  - [MUI Documentation](https://material-ui.com/getting-started/installation/)
-  - [MUI Icons](https://material-ui.com/components/material-icons/)
-  - [MUI Slider](https://mui.com/material-ui/react-slider/)
-  - [MUI Grid](https://mui.com/material-ui/react-grid2/)
-
-## Location
-
-- [Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API)
-
-### Map
-
-- [React Leaflet](https://react-leaflet.js.org/) -->
-
-## Notifications
-
-### Diagrams
-
-#### Diagram Notif/Chat Flow
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant S as Server
-    participant DB as Database
-    participant U as User Room
-
-    Note over C,U: Message Flow
-    C->>+S: Send message/like
-    S->>+DB: Save notification
-    DB-->>-S: Confirm save
-    S->>+U: Emit to user room
-    U-->>-S: Delivery confirmed
-    S-->>-C: Acknowledge receipt
-
-    Note over C,U: Read Status Update
-    C->>+S: Mark as read
-    S->>+DB: Update status
-    DB-->>-S: Confirm update
-    S-->>-C: Confirm change
-```
-
-#### Diagram Database
-
-```mermaid
-erDiagram
-    NOTIFICATION_OBJECTS ||--|{ NOTIFICATION_RECIPIENTS : "contains"
-    USERS ||--|{ NOTIFICATION_RECIPIENTS : "receives<br />sends"
-
-    NOTIFICATION_OBJECTS {
-        bigint id PK
-        notification_type type_name
-        jsonb content
-        timestamp created_at
-    }
-
-    NOTIFICATION_RECIPIENTS {
-        bigint id PK
-        bigint to_user_id FK
-        bigint from_user_id FK
-        bigint notification_object_id FK
-        boolean is_read
-        notification_status status
-        timestamp read_at
-        timestamp created_at
-    }
-
-    USERS {
-        bigint id PK
-        string username
-        string email
-    }
-```
-
-### Socket notif
-
-- https://medium.com/@hirenchavda141/from-scratch-to-real-time-building-a-notification-system-with-node-js-typescript-and-socket-io-2aa869dece40
-
-### UI notif
-
-- https://notistack.com/features/customization#custom-variant-(typescript)
-
-### Database notif (scalable - not used)
-
-- https://tannguyenit95.medium.com/designing-a-notification-system-1da83ca971bc
-
-## Chat
-
-- https://dev.to/novu/building-a-chat-app-with-socketio-and-react-2edj
-- https://socket.io/get-started/private-messaging-part-1/
-
-### Diagram Database
-
-```mermaid
-erDiagram
-    USERS ||--|{ CHATS : "participates in"
-    CHATS ||--|{ MESSAGES : "contains"
-    USERS ||--|{ MESSAGES : "sends"
-
-    CHATS {
-        bigint id PK
-        bigint user1_id FK
-        bigint user2_id FK
-        timestamp created_at
-        bigint[] deleted_by
-    }
-
-    MESSAGES {
-        bigint id PK
-        bigint chat_id FK
-        bigint from_user_id FK
-        string content
-        timestamp created_at
-    }
-
-    USERS {
-        bigint id PK
-        string username
-        string email
-    }
-
-```
-
-## Fame Rate
-
-```mermaid
-pie
-    title Fame Rate
-    "profile_infos": 10
-    "profile_pictures": 25
-    "likes": 35
-    "matches": 30
-```
-
-- Profile Infos: max 10 Fame Points
-  - 1 Fame Point per field
-- Profile Pictures: max 25 Fame Points
-  - 5 Fame Points per picture
-- Likes: max 35 Fame Points
-  - 1 Fame Point per like
-- Matches: max 30 Fame Points
-  - 2 Fame Points per match
-
-## Resources
-
-### React
-
-https://react.dev/learn/typescript#typescript-with-react-components
-https://tigerabrodi.blog/become-expert-in-react-query?ref=dailydev
-
-### Sockets
-
-- [Socket.io Documentation](https://socket.io/docs/v4/)
-- [Socket.io - Middleware](https://socket.io/docs/v4/middlewares/)
-- [Socket.io - Emit cheatsheet](https://socket.io/docs/v4/emit-cheatsheet/)
-- [Socket.io with React](https://dev.to/bravemaster619/how-to-use-socket-io-client-correctly-in-react-app-o65)
-  - [Emitting events](https://socket.io/docs/v4/emitting-events/)
-
-### Images
-
-- [OpenLicence Image Sharing - Unsplash](https://unsplash.com/)
-- [Unsplash - teacup filled with matcha tea](https://unsplash.com/photos/white-ceramic-teacup-filled-of-matcha-tea-Z-hvocTfR_s)
-
-### Patterns
-
-- [Kind Panther by Marcelo Dolza](https://uiverse.io/marcelodolza/kind-panther-75)
-
-### Favicon
-
-- [Tea Cup by Solar Icons](https://www.svgrepo.com/svg/527916/tea-cup)
-- [Matcha Tea mug Icon by Freepik](https://www.flaticon.com/free-icons/tea-mug)
-
-### Loading
-
-- [Codepen - Tea cup loading by oviedofer97](https://codepen.io/oviedofer97/pen/dyNzQeX)
+**Note**: This is an educational project. Please ensure you understand and implement proper security measures before deploying any dating application to production.
