@@ -1,0 +1,335 @@
+@page "/search"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@using Microsoft.EntityFrameworkCore
+@using WebMatcha.Data
+@using WebMatcha.Components.Shared
+@inject IDbContextFactory<MatchaDbContext> DbFactory
+@inject ServerSessionService SessionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Advanced Search - WebMatcha</PageTitle>
+
+<AuthRequired>
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-search"></i> Search Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form @onsubmit="ApplyFilters" @onsubmit:preventDefault="true">
+                        <div class="mb-3">
+                            <label class="form-label">Age Range</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="number" @bind="ageMin" class="form-control form-control-sm" min="18" max="100" style="width: 60px;">
+                                <span>to</span>
+                                <input type="number" @bind="ageMax" class="form-control form-control-sm" min="18" max="100" style="width: 60px;">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Fame Rating</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="range" @bind="minFame" @bind:event="oninput" class="form-range" min="0" max="100" />
+                                <span class="badge bg-secondary">@minFame+</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="number" @bind="maxDistance" class="form-control" min="1" max="500">
+                                <span class="input-group-text">km</span>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" @bind="useLocation" class="form-check-input" id="useLocationCheck">
+                                <label class="form-check-label" for="useLocationCheck">
+                                    Filter by distance
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Tags</label>
+                            <input type="text" @bind="tagSearch" class="form-control form-control-sm mb-2" 
+                                   placeholder="Search tags...">
+                            <div style="max-height: 150px; overflow-y: auto;">
+                                @foreach (var tag in availableTags)
+                                {
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="tag-@tag"
+                                               checked="@selectedTags.Contains(tag)"
+                                               @onchange="@((e) => ToggleTag(tag, (bool)e.Value!))">
+                                        <label class="form-check-label" for="tag-@tag">
+                                            @tag
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Sort By</label>
+                            <select @bind="sortBy" class="form-select form-select-sm">
+                                <option value="age">Age</option>
+                                <option value="fame">Fame Rating</option>
+                                <option value="distance">Distance</option>
+                                <option value="tags">Common Tags</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="ResetFilters">
+                                <i class="bi bi-arrow-clockwise"></i> Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3>Search Results</h3>
+                <span class="badge bg-primary">@filteredUsers.Count users found</span>
+            </div>
+            
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (filteredUsers.Any())
+            {
+                <div class="row g-3">
+                    @foreach (var user in filteredUsers)
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="position-relative">
+                                    <img src="@user.ProfilePhotoUrl" class="card-img-top" alt="@user.FirstName" 
+                                         style="height: 200px; object-fit: cover;">
+                                    
+                                    @if (user.IsOnline)
+                                    {
+                                        <span class="position-absolute top-0 end-0 m-2 badge bg-success">
+                                            <i class="bi bi-circle-fill"></i> Online
+                                        </span>
+                                    }
+                                    
+                                    @if (useLocation && user.Distance.HasValue)
+                                    {
+                                        <span class="position-absolute bottom-0 start-0 m-2 badge bg-dark">
+                                            <i class="bi bi-geo-alt"></i> @Math.Round(user.Distance.Value, 1) km
+                                        </span>
+                                    }
+                                </div>
+                                
+                                <div class="card-body">
+                                    <h5 class="card-title">@user.FirstName, @user.Age</h5>
+                                    
+                                    <div class="mb-2">
+                                        <div class="text-warning">
+                                            @for (int i = 0; i < 5; i++)
+                                            {
+                                                @if (i < (user.FameRating / 20))
+                                                {
+                                                    <i class="bi bi-star-fill"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-star"></i>
+                                                }
+                                            }
+                                            <small class="text-muted">(@user.FameRating%)</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="card-text small text-truncate">@user.Biography</p>
+                                    
+                                    @if (user.InterestTags.Any())
+                                    {
+                                        <div class="mb-2">
+                                            @foreach (var tag in user.InterestTags.Take(3))
+                                            {
+                                                <span class="badge bg-secondary me-1">@tag</span>
+                                            }
+                                            @if (user.InterestTags.Count > 3)
+                                            {
+                                                <span class="text-muted small">+@(user.InterestTags.Count - 3)</span>
+                                            }
+                                        </div>
+                                    }
+                                    
+                                    <div class="d-grid">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                @onclick='() => Navigation.NavigateTo($"/profile/{user.Id}")'>
+                                            <i class="bi bi-eye"></i> View Profile
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <p class="mt-3 text-muted">No users found matching your criteria</p>
+                    <button class="btn btn-primary" @onclick="ResetFilters">Try Different Filters</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<User> allUsers = new();
+    private List<User> filteredUsers = new();
+    private List<string> availableTags = new();
+    private HashSet<string> selectedTags = new();
+    private bool isLoading = true;
+    private int? currentUserId;
+    
+    // Filter parameters
+    private int ageMin = 18;
+    private int ageMax = 100;
+    private int minFame = 0;
+    private int maxDistance = 50;
+    private bool useLocation = false;
+    private string tagSearch = "";
+    private string sortBy = "age";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        currentUserId = SessionService.GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        
+        await LoadUsers();
+        await ApplyFilters();
+    }
+    
+    private async Task LoadUsers()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        
+        // Get all users except current user
+        allUsers = await context.Users
+            .Where(u => u.Id != currentUserId!.Value)
+            .ToListAsync();
+            
+        // Get current user for location calculation
+        var currentUser = await context.Users.FindAsync(currentUserId.Value);
+        
+        if (currentUser != null && useLocation)
+        {
+            // Calculate distances
+            foreach (var user in allUsers)
+            {
+                user.Distance = CalculateDistance(
+                    currentUser.Latitude, currentUser.Longitude,
+                    user.Latitude, user.Longitude);
+            }
+        }
+        
+        // Extract all unique tags
+        availableTags = allUsers
+            .SelectMany(u => u.InterestTags)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+            
+        isLoading = false;
+    }
+    
+    private async Task ApplyFilters()
+    {
+        filteredUsers = allUsers.AsEnumerable().ToList();
+        
+        // Age filter
+        filteredUsers = filteredUsers.Where(u => 
+        {
+            var age = DateTime.Now.Year - u.BirthDate.Year;
+            return age >= ageMin && age <= ageMax;
+        }).ToList();
+        
+        // Fame filter
+        filteredUsers = filteredUsers.Where(u => u.FameRating >= minFame).ToList();
+        
+        // Distance filter
+        if (useLocation)
+        {
+            filteredUsers = filteredUsers.Where(u => u.Distance.HasValue && u.Distance.Value <= maxDistance).ToList();
+        }
+        
+        // Tag filter
+        if (selectedTags.Any())
+        {
+            filteredUsers = filteredUsers.Where(u => 
+                u.InterestTags.Any(t => selectedTags.Contains(t))).ToList();
+        }
+        
+        // Sorting
+        filteredUsers = sortBy switch
+        {
+            "age" => filteredUsers.OrderBy(u => DateTime.Now.Year - u.BirthDate.Year).ToList(),
+            "fame" => filteredUsers.OrderByDescending(u => u.FameRating).ToList(),
+            "distance" => filteredUsers.OrderBy(u => u.Distance ?? double.MaxValue).ToList(),
+            "tags" => filteredUsers.OrderByDescending(u => u.InterestTags.Count(t => selectedTags.Contains(t))).ToList(),
+            _ => filteredUsers
+        };
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private void ToggleTag(string tag, bool isChecked)
+    {
+        if (isChecked)
+            selectedTags.Add(tag);
+        else
+            selectedTags.Remove(tag);
+    }
+    
+    private async Task ResetFilters()
+    {
+        ageMin = 18;
+        ageMax = 100;
+        minFame = 0;
+        maxDistance = 50;
+        useLocation = false;
+        selectedTags.Clear();
+        sortBy = "age";
+        
+        await ApplyFilters();
+    }
+    
+    private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double R = 6371; // Earth's radius in km
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c;
+    }
+    
+    private double ToRadians(double degrees) => degrees * (Math.PI / 180);
+}
+</AuthRequired>

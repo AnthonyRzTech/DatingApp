@@ -12,8 +12,6 @@
           "BCrypt.Net-Next": "4.0.3",
           "DotNetEnv": "3.1.1",
           "EFCore.NamingConventions": "9.0.0",
-          "FastEndpoints": "7.0.1",
-          "FastEndpoints.Security": "7.0.1",
           "FluentValidation": "12.0.0",
           "MailKit": "4.13.0",
           "Microsoft.AspNetCore.SignalR.Client": "9.0.8",
@@ -84,50 +82,6 @@
           }
         }
       },
-      "FastEndpoints/7.0.1": {
-        "dependencies": {
-          "FastEndpoints.Attributes": "7.0.1",
-          "FastEndpoints.Messaging.Core": "7.0.1",
-          "FluentValidation": "12.0.0"
-        },
-        "runtime": {
-          "lib/net9.0/FastEndpoints.dll": {
-            "assemblyVersion": "7.0.1.0",
-            "fileVersion": "7.0.1.0"
-          }
-        }
-      },
-      "FastEndpoints.Attributes/7.0.1": {
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "9.0.8"
-        },
-        "runtime": {
-          "lib/netstandard2.0/FastEndpoints.Attributes.dll": {
-            "assemblyVersion": "7.0.1.0",
-            "fileVersion": "7.0.1.0"
-          }
-        }
-      },
-      "FastEndpoints.Messaging.Core/7.0.1": {
-        "runtime": {
-          "lib/netstandard2.1/FastEndpoints.Messaging.Core.dll": {
-            "assemblyVersion": "7.0.1.0",
-            "fileVersion": "7.0.1.0"
-          }
-        }
-      },
-      "FastEndpoints.Security/7.0.1": {
-        "dependencies": {
-          "FastEndpoints": "7.0.1",
-          "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.7"
-        },
-        "runtime": {
-          "lib/net9.0/FastEndpoints.Security.dll": {
-            "assemblyVersion": "7.0.1.0",
-            "fileVersion": "7.0.1.0"
-          }
-        }
-      },
       "FluentValidation/12.0.0": {
         "runtime": {
           "lib/net8.0/FluentValidation.dll": {
@@ -153,17 +107,6 @@
           "lib/net8.0/MailKit.dll": {
             "assemblyVersion": "4.13.0.0",
             "fileVersion": "4.13.0.0"
-          }
-        }
-      },
-      "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.7": {
-        "dependencies": {
-          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.0.1"
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
-            "assemblyVersion": "9.0.7.0",
-            "fileVersion": "9.0.725.31702"
           }
         }
       },
@@ -812,29 +755,6 @@
           "lib/net9.0/Microsoft.IdentityModel.Logging.dll": {
             "assemblyVersion": "8.14.0.0",
             "fileVersion": "8.14.0.60815"
-          }
-        }
-      },
-      "Microsoft.IdentityModel.Protocols/8.0.1": {
-        "dependencies": {
-          "Microsoft.IdentityModel.Tokens": "8.14.0"
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.IdentityModel.Protocols.dll": {
-            "assemblyVersion": "8.0.1.0",
-            "fileVersion": "8.0.1.50722"
-          }
-        }
-      },
-      "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
-        "dependencies": {
-          "Microsoft.IdentityModel.Protocols": "8.0.1",
-          "System.IdentityModel.Tokens.Jwt": "8.14.0"
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
-            "assemblyVersion": "8.0.1.0",
-            "fileVersion": "8.0.1.50722"
           }
         }
       },
@@ -1744,34 +1664,6 @@
       "path": "efcore.namingconventions/9.0.0",
       "hashPath": "efcore.namingconventions.9.0.0.nupkg.sha512"
     },
-    "FastEndpoints/7.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-UOCLrptt8AQP3W969Q74LZ8XnGg64033TBw59DNC9e/mTCKyilofPWo9yWjiPnwtIru0k3+0QAXko+JDTjaOMA==",
-      "path": "fastendpoints/7.0.1",
-      "hashPath": "fastendpoints.7.0.1.nupkg.sha512"
-    },
-    "FastEndpoints.Attributes/7.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-YPBP+5LuMWnSK/VEJfp1Ui8Jjehvx2LxZlylC9WIdHc/PfUfHTwP7j93haYNZt2RQElxM/fOYSi/MzOFC1d8/g==",
-      "path": "fastendpoints.attributes/7.0.1",
-      "hashPath": "fastendpoints.attributes.7.0.1.nupkg.sha512"
-    },
-    "FastEndpoints.Messaging.Core/7.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-JqC1nc2D7w/Opc3rqXCrGr8qds1TRU386O7s2E+g+/D5Od2WhRsfTIQf+gvqVDXgKSTtvXnMpPQCdJnpPaqK9A==",
-      "path": "fastendpoints.messaging.core/7.0.1",
-      "hashPath": "fastendpoints.messaging.core.7.0.1.nupkg.sha512"
-    },
-    "FastEndpoints.Security/7.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-oi25/gBEoUtAYEL5hGBtMmHkn+m1/bpZ6yH+mHFmFGb63hTarN8079mV9Vcpzr7bolUwC5d/Cxug8mSZdrXvxg==",
-      "path": "fastendpoints.security/7.0.1",
-      "hashPath": "fastendpoints.security.7.0.1.nupkg.sha512"
-    },
     "FluentValidation/12.0.0": {
       "type": "package",
       "serviceable": true,
@@ -1792,13 +1684,6 @@
       "sha512": "sha512-GsepEHKkaQvbAuBizlhz93yc0ihJWzVCfoerfnpCeqiKLeS6gsTKInYy3/U2wqgkGE62TKs5OKS1a90pyc+j4g==",
       "path": "mailkit/4.13.0",
       "hashPath": "mailkit.4.13.0.nupkg.sha512"
-    },
-    "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-lloN3XvIgXmdocfghzfszOHJb45OYR3fgOg/h536o+zNB2SmP3JrqeOieCBZ7sipgGcgbxP0boA+loVhdsJxWg==",
-      "path": "microsoft.aspnetcore.authentication.jwtbearer/9.0.7",
-      "hashPath": "microsoft.aspnetcore.authentication.jwtbearer.9.0.7.nupkg.sha512"
     },
     "Microsoft.AspNetCore.Connections.Abstractions/9.0.8": {
       "type": "package",
@@ -2100,20 +1985,6 @@
       "sha512": "sha512-eqqnemdW38CKZEHS6diA50BV94QICozDZEvSrsvN3SJXUFwVB9gy+/oz76gldP7nZliA16IglXjXTCTdmU/Ejg==",
       "path": "microsoft.identitymodel.logging/8.14.0",
       "hashPath": "microsoft.identitymodel.logging.8.14.0.nupkg.sha512"
-    },
-    "Microsoft.IdentityModel.Protocols/8.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-uA2vpKqU3I2mBBEaeJAWPTjT9v1TZrGWKdgK6G5qJd03CLx83kdiqO9cmiK8/n1erkHzFBwU/RphP83aAe3i3g==",
-      "path": "microsoft.identitymodel.protocols/8.0.1",
-      "hashPath": "microsoft.identitymodel.protocols.8.0.1.nupkg.sha512"
-    },
-    "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-AQDbfpL+yzuuGhO/mQhKNsp44pm5Jv8/BI4KiFXR7beVGZoSH35zMV3PrmcfvSTsyI6qrcR898NzUauD6SRigg==",
-      "path": "microsoft.identitymodel.protocols.openidconnect/8.0.1",
-      "hashPath": "microsoft.identitymodel.protocols.openidconnect.8.0.1.nupkg.sha512"
     },
     "Microsoft.IdentityModel.Tokens/8.14.0": {
       "type": "package",

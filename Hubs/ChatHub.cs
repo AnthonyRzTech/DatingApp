@@ -24,6 +24,13 @@ public class ChatHub : Hub
         {
             _userConnections[id] = Context.ConnectionId;
             await _userService.UpdateLastSeenAsync(id);
+            
+            // Notify all connected users about online status
+            await Clients.Others.SendAsync("UserStatusChanged", new
+            {
+                userId = id,
+                isOnline = true
+            });
         }
         
         await base.OnConnectedAsync();
@@ -36,6 +43,13 @@ public class ChatHub : Hub
         {
             _userConnections.Remove(userEntry.Key);
             await _userService.SetOfflineAsync(userEntry.Key);
+            
+            // Notify all connected users about offline status
+            await Clients.Others.SendAsync("UserStatusChanged", new
+            {
+                userId = userEntry.Key,
+                isOnline = false
+            });
         }
         
         await base.OnDisconnectedAsync(exception);
@@ -89,6 +103,13 @@ public class ChatHub : Hub
     {
         _userConnections[userId] = Context.ConnectionId;
         await _userService.UpdateLastSeenAsync(userId);
+        
+        // Notify all other users about online status
+        await Clients.Others.SendAsync("UserStatusChanged", new
+        {
+            userId = userId,
+            isOnline = true
+        });
     }
     
     public async Task LeaveChat(int userId)
@@ -97,11 +118,31 @@ public class ChatHub : Hub
         {
             _userConnections.Remove(userId);
             await _userService.SetOfflineAsync(userId);
+            
+            // Notify all other users about offline status
+            await Clients.Others.SendAsync("UserStatusChanged", new
+            {
+                userId = userId,
+                isOnline = false
+            });
         }
     }
     
-    public async Task<bool> IsUserOnline(int userId)
+    public Task<bool> IsUserOnline(int userId)
     {
-        return _userConnections.ContainsKey(userId);
+        return Task.FromResult(_userConnections.ContainsKey(userId));
+    }
+    
+    public async Task SendTypingIndicator(int senderId, int receiverId, bool isTyping)
+    {
+        // Send typing indicator to receiver if online
+        if (_userConnections.TryGetValue(receiverId, out var connectionId))
+        {
+            await Clients.Client(connectionId).SendAsync("UserTyping", new
+            {
+                userId = senderId,
+                isTyping = isTyping
+            });
+        }
     }
 }

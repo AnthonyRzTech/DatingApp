@@ -76,73 +76,6 @@
           "lib/net8.0/EFCore.NamingConventions.dll": {}
         }
       },
-      "FastEndpoints/7.0.1": {
-        "type": "package",
-        "dependencies": {
-          "FastEndpoints.Attributes": "7.0.1",
-          "FastEndpoints.Messaging.Core": "7.0.1",
-          "FluentValidation": "12.0.0"
-        },
-        "compile": {
-          "lib/net9.0/FastEndpoints.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net9.0/FastEndpoints.dll": {
-            "related": ".xml"
-          }
-        },
-        "frameworkReferences": [
-          "Microsoft.AspNetCore.App"
-        ]
-      },
-      "FastEndpoints.Attributes/7.0.1": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/netstandard2.0/FastEndpoints.Attributes.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.0/FastEndpoints.Attributes.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "FastEndpoints.Messaging.Core/7.0.1": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.1/FastEndpoints.Messaging.Core.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.1/FastEndpoints.Messaging.Core.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "FastEndpoints.Security/7.0.1": {
-        "type": "package",
-        "dependencies": {
-          "FastEndpoints": "7.0.1",
-          "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.7"
-        },
-        "compile": {
-          "lib/net9.0/FastEndpoints.Security.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net9.0/FastEndpoints.Security.dll": {
-            "related": ".xml"
-          }
-        }
-      },
       "FluentValidation/12.0.0": {
         "type": "package",
         "compile": {
@@ -185,25 +118,6 @@
             "related": ".dll.config;.pdb;.xml"
           }
         }
-      },
-      "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.7": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.0.1"
-        },
-        "compile": {
-          "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
-            "related": ".xml"
-          }
-        },
-        "frameworkReferences": [
-          "Microsoft.AspNetCore.App"
-        ]
       },
       "Microsoft.AspNetCore.Connections.Abstractions/9.0.8": {
         "type": "package",
@@ -1152,39 +1066,6 @@
         },
         "runtime": {
           "lib/net9.0/Microsoft.IdentityModel.Logging.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.IdentityModel.Protocols/8.0.1": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.IdentityModel.Tokens": "8.0.1"
-        },
-        "compile": {
-          "lib/net9.0/Microsoft.IdentityModel.Protocols.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.IdentityModel.Protocols.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.IdentityModel.Protocols": "8.0.1",
-          "System.IdentityModel.Tokens.Jwt": "8.0.1"
-        },
-        "compile": {
-          "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
             "related": ".xml"
           }
         }
@@ -2995,71 +2876,6 @@
         "lib/net8.0/EFCore.NamingConventions.dll"
       ]
     },
-    "FastEndpoints/7.0.1": {
-      "sha512": "UOCLrptt8AQP3W969Q74LZ8XnGg64033TBw59DNC9e/mTCKyilofPWo9yWjiPnwtIru0k3+0QAXko+JDTjaOMA==",
-      "type": "package",
-      "path": "fastendpoints/7.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "README.md",
-        "fastendpoints.7.0.1.nupkg.sha512",
-        "fastendpoints.nuspec",
-        "icon.png",
-        "lib/net10.0/FastEndpoints.dll",
-        "lib/net10.0/FastEndpoints.xml",
-        "lib/net8.0/FastEndpoints.dll",
-        "lib/net8.0/FastEndpoints.xml",
-        "lib/net9.0/FastEndpoints.dll",
-        "lib/net9.0/FastEndpoints.xml"
-      ]
-    },
-    "FastEndpoints.Attributes/7.0.1": {
-      "sha512": "YPBP+5LuMWnSK/VEJfp1Ui8Jjehvx2LxZlylC9WIdHc/PfUfHTwP7j93haYNZt2RQElxM/fOYSi/MzOFC1d8/g==",
-      "type": "package",
-      "path": "fastendpoints.attributes/7.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "fastendpoints.attributes.7.0.1.nupkg.sha512",
-        "fastendpoints.attributes.nuspec",
-        "icon.png",
-        "lib/netstandard2.0/FastEndpoints.Attributes.dll",
-        "lib/netstandard2.0/FastEndpoints.Attributes.xml"
-      ]
-    },
-    "FastEndpoints.Messaging.Core/7.0.1": {
-      "sha512": "JqC1nc2D7w/Opc3rqXCrGr8qds1TRU386O7s2E+g+/D5Od2WhRsfTIQf+gvqVDXgKSTtvXnMpPQCdJnpPaqK9A==",
-      "type": "package",
-      "path": "fastendpoints.messaging.core/7.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "fastendpoints.messaging.core.7.0.1.nupkg.sha512",
-        "fastendpoints.messaging.core.nuspec",
-        "icon.png",
-        "lib/netstandard2.1/FastEndpoints.Messaging.Core.dll",
-        "lib/netstandard2.1/FastEndpoints.Messaging.Core.xml"
-      ]
-    },
-    "FastEndpoints.Security/7.0.1": {
-      "sha512": "oi25/gBEoUtAYEL5hGBtMmHkn+m1/bpZ6yH+mHFmFGb63hTarN8079mV9Vcpzr7bolUwC5d/Cxug8mSZdrXvxg==",
-      "type": "package",
-      "path": "fastendpoints.security/7.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "fastendpoints.security.7.0.1.nupkg.sha512",
-        "fastendpoints.security.nuspec",
-        "icon.png",
-        "lib/net10.0/FastEndpoints.Security.dll",
-        "lib/net10.0/FastEndpoints.Security.xml",
-        "lib/net8.0/FastEndpoints.Security.dll",
-        "lib/net8.0/FastEndpoints.Security.xml",
-        "lib/net9.0/FastEndpoints.Security.dll",
-        "lib/net9.0/FastEndpoints.Security.xml"
-      ]
-    },
     "FluentValidation/12.0.0": {
       "sha512": "8NVLxtMUXynRHJIX3Hn1ACovaqZIJASufXIIFkD0EUbcd5PmMsL1xUD5h548gCezJ5BzlITaR9CAMrGe29aWpA==",
       "type": "package",
@@ -3131,22 +2947,6 @@
         "lib/netstandard2.1/MailKit.xml",
         "mailkit.4.13.0.nupkg.sha512",
         "mailkit.nuspec"
-      ]
-    },
-    "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.7": {
-      "sha512": "lloN3XvIgXmdocfghzfszOHJb45OYR3fgOg/h536o+zNB2SmP3JrqeOieCBZ7sipgGcgbxP0boA+loVhdsJxWg==",
-      "type": "package",
-      "path": "microsoft.aspnetcore.authentication.jwtbearer/9.0.7",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "Icon.png",
-        "PACKAGE.md",
-        "THIRD-PARTY-NOTICES.TXT",
-        "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll",
-        "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.xml",
-        "microsoft.aspnetcore.authentication.jwtbearer.9.0.7.nupkg.sha512",
-        "microsoft.aspnetcore.authentication.jwtbearer.nuspec"
       ]
     },
     "Microsoft.AspNetCore.Connections.Abstractions/9.0.8": {
@@ -4947,52 +4747,6 @@
         "lib/netstandard2.0/Microsoft.IdentityModel.Logging.xml",
         "microsoft.identitymodel.logging.8.14.0.nupkg.sha512",
         "microsoft.identitymodel.logging.nuspec"
-      ]
-    },
-    "Microsoft.IdentityModel.Protocols/8.0.1": {
-      "sha512": "uA2vpKqU3I2mBBEaeJAWPTjT9v1TZrGWKdgK6G5qJd03CLx83kdiqO9cmiK8/n1erkHzFBwU/RphP83aAe3i3g==",
-      "type": "package",
-      "path": "microsoft.identitymodel.protocols/8.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/net462/Microsoft.IdentityModel.Protocols.dll",
-        "lib/net462/Microsoft.IdentityModel.Protocols.xml",
-        "lib/net472/Microsoft.IdentityModel.Protocols.dll",
-        "lib/net472/Microsoft.IdentityModel.Protocols.xml",
-        "lib/net6.0/Microsoft.IdentityModel.Protocols.dll",
-        "lib/net6.0/Microsoft.IdentityModel.Protocols.xml",
-        "lib/net8.0/Microsoft.IdentityModel.Protocols.dll",
-        "lib/net8.0/Microsoft.IdentityModel.Protocols.xml",
-        "lib/net9.0/Microsoft.IdentityModel.Protocols.dll",
-        "lib/net9.0/Microsoft.IdentityModel.Protocols.xml",
-        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.dll",
-        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.xml",
-        "microsoft.identitymodel.protocols.8.0.1.nupkg.sha512",
-        "microsoft.identitymodel.protocols.nuspec"
-      ]
-    },
-    "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
-      "sha512": "AQDbfpL+yzuuGhO/mQhKNsp44pm5Jv8/BI4KiFXR7beVGZoSH35zMV3PrmcfvSTsyI6qrcR898NzUauD6SRigg==",
-      "type": "package",
-      "path": "microsoft.identitymodel.protocols.openidconnect/8.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/net462/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
-        "lib/net462/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
-        "lib/net472/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
-        "lib/net472/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
-        "lib/net6.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
-        "lib/net6.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
-        "lib/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
-        "lib/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
-        "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
-        "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
-        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
-        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
-        "microsoft.identitymodel.protocols.openidconnect.8.0.1.nupkg.sha512",
-        "microsoft.identitymodel.protocols.openidconnect.nuspec"
       ]
     },
     "Microsoft.IdentityModel.Tokens/8.14.0": {
@@ -8898,8 +8652,6 @@
       "BCrypt.Net-Next >= 4.0.3",
       "DotNetEnv >= 3.1.1",
       "EFCore.NamingConventions >= 9.0.0",
-      "FastEndpoints >= 7.0.1",
-      "FastEndpoints.Security >= 7.0.1",
       "FluentValidation >= 12.0.0",
       "MailKit >= 4.13.0",
       "Microsoft.AspNetCore.SignalR.Client >= 9.0.8",
@@ -8911,24 +8663,25 @@
     ]
   },
   "packageFolders": {
-    "/home/tony/.nuget/packages/": {}
+    "/home/anthrodr/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/tony/WebMatcha/WebMatcha.csproj",
+      "projectUniqueName": "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj",
       "projectName": "WebMatcha",
-      "projectPath": "/home/tony/WebMatcha/WebMatcha.csproj",
-      "packagesPath": "/home/tony/.nuget/packages/",
-      "outputPath": "/home/tony/WebMatcha/obj/",
+      "projectPath": "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj",
+      "packagesPath": "/home/anthrodr/.nuget/packages/",
+      "outputPath": "/home/anthrodr/.ssh/DatingApp/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/tony/.nuget/NuGet/NuGet.Config"
+        "/home/anthrodr/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
+        "/usr/lib/dotnet/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -8968,14 +8721,6 @@
           "EFCore.NamingConventions": {
             "target": "Package",
             "version": "[9.0.0, )"
-          },
-          "FastEndpoints": {
-            "target": "Package",
-            "version": "[7.0.1, )"
-          },
-          "FastEndpoints.Security": {
-            "target": "Package",
-            "version": "[7.0.1, )"
           },
           "FluentValidation": {
             "target": "Package",
@@ -9021,12 +8766,6 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[9.0.8, 9.0.8]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.AspNetCore.App": {
             "privateAssets": "none"
@@ -9035,7 +8774,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

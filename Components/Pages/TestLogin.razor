@@ -1,0 +1,121 @@
+@page "/test-login"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@inject CompleteAuthService AuthService
+@inject NavigationManager Navigation
+@inject ServerSessionService SessionService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Test Login - WebMatcha</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h3>Test Login Form</h3>
+                    
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert @(isError ? "alert-danger" : "alert-success")">
+                            @message
+                        </div>
+                    }
+                    
+                    <div class="mb-3">
+                        <label>Username</label>
+                        <input type="text" @bind="username" class="form-control" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label>Password</label>
+                        <input type="password" @bind="password" class="form-control" />
+                    </div>
+                    
+                    <button class="btn btn-primary" @onclick="HandleTestLogin" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span>Loading...</span>
+                        }
+                        else
+                        {
+                            <span>Test Login</span>
+                        }
+                    </button>
+                    
+                    <hr />
+                    
+                    <h5>Debug Info:</h5>
+                    <p>Username entered: @username</p>
+                    <p>Password length: @password.Length</p>
+                    <p>Is Loading: @isLoading</p>
+                    <p>Current User ID: @SessionService.GetCurrentUserId()</p>
+                    <p>Is Authenticated: @SessionService.IsAuthenticated()</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string username = "";
+    private string password = "";
+    private string message = "";
+    private bool isError = false;
+    private bool isLoading = false;
+    
+    private async Task HandleTestLogin()
+    {
+        if (isLoading) return;
+        
+        message = "Starting login...";
+        isError = false;
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            var loginRequest = new LoginRequest 
+            { 
+                Username = username, 
+                Password = password 
+            };
+            
+            message = "Calling auth service...";
+            StateHasChanged();
+            
+            var result = await AuthService.LoginAsync(loginRequest);
+            
+            if (result.Success && result.User != null)
+            {
+                message = $"Login successful! User: {result.User.Username}";
+                isError = false;
+                
+                // Set session
+                SessionService.SetCurrentUser(result.User);
+                
+                StateHasChanged();
+                await Task.Delay(1000);
+                
+                // Try navigation
+                Navigation.NavigateTo("/browse", forceLoad: true);
+            }
+            else
+            {
+                message = $"Login failed: {string.Join(", ", result.Errors)}";
+                isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Exception: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

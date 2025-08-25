@@ -3,14 +3,17 @@
 @using WebMatcha.Models
 @using Microsoft.EntityFrameworkCore
 @using WebMatcha.Data
+@using WebMatcha.Components.Shared
 @inject UserService UserService
 @inject MatchingService MatchingService
 @inject NavigationManager Navigation
 @inject IDbContextFactory<MatchaDbContext> DbFactory
+@inject ServerSessionService SessionService
 @rendermode InteractiveServer
 
 <PageTitle>Browse Profiles - WebMatcha</PageTitle>
 
+<AuthRequired>
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-3">
@@ -156,11 +159,27 @@
     private int maxDistance = 100;
     private int minFame = 0;
     private string sortBy = "distance";
-    // Temporary current user ID - will be replaced with actual auth later
-    private int currentUserId = 1;
+    private int? currentUserId;
     
     protected override async Task OnInitializedAsync()
     {
+        // Get current user from session
+        currentUserId = SessionService.GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            // If not logged in, redirect to login
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        
+        // Check if user has completed profile
+        var currentUser = await UserService.GetUserByIdAsync(currentUserId.Value);
+        if (currentUser != null && string.IsNullOrEmpty(currentUser.Biography))
+        {
+            Navigation.NavigateTo("/profile/edit");
+            return;
+        }
+        
         await LoadUsers();
     }
     
@@ -170,7 +189,7 @@
         allUsers = await UserService.GetAllUsersAsync();
         
         // Remove current user from list
-        allUsers = allUsers.Where(u => u.Id != currentUserId).ToList();
+        allUsers = allUsers.Where(u => u.Id != currentUserId.Value).ToList();
         
         // Calculate distances (temporary - using Paris coordinates)
         var currentLat = 48.8566;
@@ -182,10 +201,10 @@
         }
         
         // Load likes and matches for current user
-        var likes = await MatchingService.GetUserLikesAsync(currentUserId);
+        var likes = await MatchingService.GetUserLikesAsync(currentUserId.Value);
         likedUsers = likes.ToDictionary(u => u.Id, u => true);
         
-        var matches = await MatchingService.GetUserMatchesAsync(currentUserId);
+        var matches = await MatchingService.GetUserMatchesAsync(currentUserId.Value);
         matchedUsers = matches.ToDictionary(u => u.Id, u => true);
         
         ApplyFilters();
@@ -229,11 +248,13 @@
     
     private async Task LikeUser(int userId)
     {
-        await MatchingService.LikeUserAsync(currentUserId, userId);
+        if (!currentUserId.HasValue) return;
+        
+        await MatchingService.LikeUserAsync(currentUserId.Value, userId);
         likedUsers[userId] = true;
         
         // Check if it's now a match
-        if (await MatchingService.IsMatchedAsync(currentUserId, userId))
+        if (await MatchingService.IsMatchedAsync(currentUserId.Value, userId))
         {
             matchedUsers[userId] = true;
         }
@@ -243,7 +264,9 @@
     
     private async Task UnlikeUser(int userId)
     {
-        await MatchingService.UnlikeUserAsync(currentUserId, userId);
+        if (!currentUserId.HasValue) return;
+        
+        await MatchingService.UnlikeUserAsync(currentUserId.Value, userId);
         likedUsers.Remove(userId);
         matchedUsers.Remove(userId);
         StateHasChanged();
@@ -276,3 +299,4 @@
         return degrees * (Math.PI / 180);
     }
 }
+</AuthRequired>

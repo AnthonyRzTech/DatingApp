@@ -1,25 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "/home/tony/WebMatcha/WebMatcha.csproj": {}
+    "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj": {}
   },
   "projects": {
-    "/home/tony/WebMatcha/WebMatcha.csproj": {
+    "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/tony/WebMatcha/WebMatcha.csproj",
+        "projectUniqueName": "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj",
         "projectName": "WebMatcha",
-        "projectPath": "/home/tony/WebMatcha/WebMatcha.csproj",
-        "packagesPath": "/home/tony/.nuget/packages/",
-        "outputPath": "/home/tony/WebMatcha/obj/",
+        "projectPath": "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj",
+        "packagesPath": "/home/anthrodr/.nuget/packages/",
+        "outputPath": "/home/anthrodr/.ssh/DatingApp/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/tony/.nuget/NuGet/NuGet.Config"
+          "/home/anthrodr/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "/usr/lib/dotnet/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -59,14 +60,6 @@
             "EFCore.NamingConventions": {
               "target": "Package",
               "version": "[9.0.0, )"
-            },
-            "FastEndpoints": {
-              "target": "Package",
-              "version": "[7.0.1, )"
-            },
-            "FastEndpoints.Security": {
-              "target": "Package",
-              "version": "[7.0.1, )"
             },
             "FluentValidation": {
               "target": "Package",
@@ -112,12 +105,6 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[9.0.8, 9.0.8]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -126,7 +113,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

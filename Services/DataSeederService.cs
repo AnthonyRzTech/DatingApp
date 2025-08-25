@@ -33,15 +33,17 @@ public class DataSeederService
     
     public async Task SeedDatabaseAsync(int userCount = 500)
     {
-        if (await _context.Users.AnyAsync())
+        var existingCount = await _context.Users.CountAsync();
+        if (existingCount >= userCount)
         {
-            Console.WriteLine("Database already contains users. Skipping seed.");
+            Console.WriteLine($"Database already contains {existingCount} users. Skipping seed.");
             return;
         }
         
-        Console.WriteLine($"Seeding database with {userCount} users...");
+        var usersToAdd = userCount - existingCount;
+        Console.WriteLine($"Database has {existingCount} users. Adding {usersToAdd} more users...");
         
-        var users = GenerateUsers(userCount);
+        var users = GenerateUsers(usersToAdd);
         
         // Insert users in smaller batches to avoid parameter limit
         const int batchSize = 50;

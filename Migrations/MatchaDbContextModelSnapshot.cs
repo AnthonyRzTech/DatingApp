@@ -53,6 +53,50 @@ namespace WebMatcha.Migrations
                     b.ToTable("blocks", (string)null);
                 });
 
+            modelBuilder.Entity("WebMatcha.Models.EmailVerification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_used");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("token");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_verifications");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_email_verifications_token");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_email_verifications_user_id");
+
+                    b.ToTable("email_verifications", (string)null);
+                });
+
             modelBuilder.Entity("WebMatcha.Models.Like", b =>
                 {
                     b.Property<int>("Id")
@@ -195,6 +239,50 @@ namespace WebMatcha.Migrations
                     b.ToTable("notifications", (string)null);
                 });
 
+            modelBuilder.Entity("WebMatcha.Models.PasswordReset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_used");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("token");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_resets");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_password_resets_token");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_password_resets_user_id");
+
+                    b.ToTable("password_resets", (string)null);
+                });
+
             modelBuilder.Entity("WebMatcha.Models.ProfileView", b =>
                 {
                     b.Property<int>("Id")
@@ -235,6 +323,10 @@ namespace WebMatcha.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool>("IsResolved")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_resolved");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("text")
@@ -273,11 +365,23 @@ namespace WebMatcha.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("birth_date");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("email");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verified_at");
 
                     b.Property<int>("FameRating")
                         .HasColumnType("integer")
@@ -299,6 +403,14 @@ namespace WebMatcha.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("interest_tags");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_email_verified");
 
                     b.Property<bool>("IsOnline")
                         .HasColumnType("boolean")
@@ -358,7 +470,7 @@ namespace WebMatcha.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("WebMatcha.Services.UserPassword", b =>
+            modelBuilder.Entity("WebMatcha.Models.UserPassword", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -389,6 +501,42 @@ namespace WebMatcha.Migrations
                         .HasDatabaseName("ix_user_passwords_user_id");
 
                     b.ToTable("user_passwords", (string)null);
+                });
+
+            modelBuilder.Entity("WebMatcha.Models.EmailVerification", b =>
+                {
+                    b.HasOne("WebMatcha.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_verifications_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebMatcha.Models.PasswordReset", b =>
+                {
+                    b.HasOne("WebMatcha.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_resets_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebMatcha.Models.UserPassword", b =>
+                {
+                    b.HasOne("WebMatcha.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_passwords_users_user_id");
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

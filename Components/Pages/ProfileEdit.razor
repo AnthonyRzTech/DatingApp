@@ -1,0 +1,627 @@
+@page "/profile/edit"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@using Microsoft.AspNetCore.Http
+@using Microsoft.EntityFrameworkCore
+@using WebMatcha.Data
+@using WebMatcha.Components.Shared
+@inject UserService UserService
+@inject IPhotoService PhotoService
+@inject ServerSessionService SessionService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<MatchaDbContext> DbFactory
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Edit Profile - WebMatcha</PageTitle>
+
+<AuthRequired>
+<div class="container mt-4">
+    @if (user == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <img src="@user.ProfilePhotoUrl" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;" alt="Profile">
+                        <h5>@user.FirstName @user.LastName</h5>
+                        <p class="text-muted">@@@user.Username</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo($"/profile/{user.Id}")'>
+                                <i class="bi bi-eye"></i> View Public Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "basic" ? "active" : "")" @onclick='() => activeTab = "basic"'>
+                                    Basic Info
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "photos" ? "active" : "")" @onclick='() => activeTab = "photos"'>
+                                    Photos
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "interests" ? "active" : "")" @onclick='() => activeTab = "interests"'>
+                                    Interests
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "location" ? "active" : "")" @onclick='() => activeTab = "location"'>
+                                    Location
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                @successMessage
+                                <button type="button" class="btn-close" @onclick='() => successMessage = ""'></button>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                @errorMessage
+                                <button type="button" class="btn-close" @onclick='() => errorMessage = ""'></button>
+                            </div>
+                        }
+                        
+                        @switch (activeTab)
+                        {
+                            case "basic":
+                                <form @onsubmit="SaveBasicInfo" @onsubmit:preventDefault="true">
+                                    <div class="mb-3">
+                                        <label class="form-label">Biography</label>
+                                        <textarea @bind="user.Biography" class="form-control" rows="4" 
+                                                  placeholder="Tell us about yourself..." maxlength="500"></textarea>
+                                        <small class="text-muted">@user.Biography.Length/500 characters</small>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Gender</label>
+                                            <select @bind="user.Gender" class="form-select">
+                                                <option value="male">Male</option>
+                                                <option value="female">Female</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Interested In</label>
+                                            <select @bind="user.SexualPreference" class="form-select">
+                                                <option value="male">Men</option>
+                                                <option value="female">Women</option>
+                                                <option value="both">Both</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                                        @if (isSubmitting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                        Save Changes
+                                    </button>
+                                </form>
+                                break;
+                                
+                            case "photos":
+                                <div class="mb-4">
+                                    <h6>Profile Photo</h6>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <img src="@user.ProfilePhotoUrl" class="rounded me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="Profile">
+                                        <div>
+                                            <InputFile OnChange="@(e => UploadProfilePhoto(e))" accept="image/*" id="profilePhotoInput" class="d-none" />
+                                            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('profilePhotoInput').click()">
+                                                <i class="bi bi-camera"></i> Change Profile Photo
+                                            </button>
+                                            @if (isUploadingProfile)
+                                            {
+                                                <div class="spinner-border spinner-border-sm ms-2" role="status">
+                                                    <span class="visually-hidden">Uploading...</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(uploadError))
+                                    {
+                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                            @uploadError
+                                            <button type="button" class="btn-close" @onclick='() => uploadError = ""'></button>
+                                        </div>
+                                    }
+                                </div>
+                                
+                                <div>
+                                    <h6>Additional Photos (@user.PhotoUrls.Count/5)</h6>
+                                    <div class="row g-3 mb-3">
+                                        @foreach (var photo in user.PhotoUrls)
+                                        {
+                                            <div class="col-4">
+                                                <div class="position-relative">
+                                                    <img src="@photo" class="img-fluid rounded" alt="Photo">
+                                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" 
+                                                            @onclick="() => DeletePhoto(photo)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (user.PhotoUrls.Count < 5)
+                                        {
+                                            <div class="col-4">
+                                                <div class="border rounded d-flex align-items-center justify-content-center @(isUploadingAdditional ? "opacity-50" : "")" 
+                                                     style="height: 150px; cursor: pointer;"
+                                                     onclick="@(isUploadingAdditional ? "" : "document.getElementById('additionalPhotoInput').click()")">
+                                                    <div class="text-center text-muted">
+                                                        @if (isUploadingAdditional)
+                                                        {
+                                                            <div class="spinner-border text-primary" role="status">
+                                                                <span class="visually-hidden">Uploading...</span>
+                                                            </div>
+                                                            <p class="mb-0 mt-2">Uploading...</p>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="bi bi-plus-circle fs-1"></i>
+                                                            <p class="mb-0">Add Photo</p>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <InputFile OnChange="@(e => UploadAdditionalPhoto(e))" accept="image/*" id="additionalPhotoInput" class="d-none" disabled="@isUploadingAdditional" />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                break;
+                                
+                            case "interests":
+                                <div>
+                                    <h6>Interest Tags</h6>
+                                    <p class="text-muted">Add tags that describe your interests</p>
+                                    
+                                    <div class="mb-3">
+                                        <div class="d-flex gap-2 flex-wrap mb-3">
+                                            @foreach (var tag in user.InterestTags)
+                                            {
+                                                <span class="badge bg-primary">
+                                                    @tag
+                                                    <button type="button" class="btn-close btn-close-white ms-1" 
+                                                            style="font-size: 0.7rem;" @onclick="() => RemoveTag(tag)"></button>
+                                                </span>
+                                            }
+                                        </div>
+                                        
+                                        @if (user.InterestTags.Count < 10)
+                                        {
+                                            <div class="input-group">
+                                                <input type="text" @bind="newTag" @bind:event="oninput" class="form-control" 
+                                                       placeholder="Add a tag..." maxlength="20" @onkeypress="@(async (e) => { if (e.Key == "Enter") await AddTag(); })">
+                                                <button class="btn btn-outline-primary" type="button" @onclick="AddTag" disabled="@(string.IsNullOrWhiteSpace(newTag))">
+                                                    Add
+                                                </button>
+                                            </div>
+                                            <small class="text-muted">Press Enter to add. Max 10 tags.</small>
+                                        }
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-muted">Popular tags:</p>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            @foreach (var tag in popularTags.Where(t => !user.InterestTags.Contains(t)))
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => AddPopularTag(tag)">
+                                                    + @tag
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                break;
+                                
+                            case "location":
+                                <div>
+                                    <h6>Location Settings</h6>
+                                    <p class="text-muted">Your location helps us find matches near you</p>
+                                    
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-primary" @onclick="GetCurrentLocation">
+                                            <i class="bi bi-geo-alt"></i> Use Current Location
+                                        </button>
+                                    </div>
+                                    
+                                    @if (user.Latitude != 0 || user.Longitude != 0)
+                                    {
+                                        <div class="alert alert-info">
+                                            <i class="bi bi-geo-alt-fill"></i> Location set: @user.Latitude.ToString("F6"), @user.Longitude.ToString("F6")
+                                        </div>
+                                    }
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Latitude</label>
+                                            <input type="number" @bind="user.Latitude" class="form-control" step="0.000001" min="-90" max="90">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Longitude</label>
+                                            <input type="number" @bind="user.Longitude" class="form-control" step="0.000001" min="-180" max="180">
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-primary" @onclick="SaveLocation" disabled="@isSubmitting">
+                                        @if (isSubmitting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                        Save Location
+                                    </button>
+                                </div>
+                                break;
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private User? user;
+    private string activeTab = "basic";
+    private bool isSubmitting = false;
+    private bool isUploadingProfile = false;
+    private bool isUploadingAdditional = false;
+    private string successMessage = "";
+    private string errorMessage = "";
+    private string uploadError = "";
+    private string newTag = "";
+    private List<string> popularTags = new() { "travel", "music", "movies", "sports", "reading", "cooking", "photography", "art", "fitness", "gaming" };
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = SessionService.GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        
+        user = await UserService.GetUserByIdAsync(userId.Value);
+        if (user == null)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Register this component instance for geolocation callbacks
+            await JS.InvokeVoidAsync("registerLocationComponent", DotNetObjectReference.Create(this));
+        }
+    }
+    
+    private async Task SaveBasicInfo()
+    {
+        if (isSubmitting || user == null) return;
+        
+        isSubmitting = true;
+        errorMessage = "";
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.Biography = user.Biography;
+                dbUser.Gender = user.Gender;
+                dbUser.SexualPreference = user.SexualPreference;
+                await context.SaveChangesAsync();
+                
+                successMessage = "Profile updated successfully!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to update profile. Please try again.";
+            Console.WriteLine($"Profile update error: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+    
+    private async Task UploadProfilePhoto(InputFileChangeEventArgs e)
+    {
+        if (user == null || isUploadingProfile) return;
+        
+        var file = e.File;
+        if (file == null) return;
+        
+        // Validate file type
+        var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        {
+            uploadError = "Please upload a valid image file (JPEG, PNG, or GIF).";
+            return;
+        }
+        
+        // Validate file size (5MB max)
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            uploadError = "File size must be less than 5MB.";
+            return;
+        }
+        
+        isUploadingProfile = true;
+        uploadError = "";
+        
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var photoUrl = await PhotoService.UploadPhotoAsync(stream, file.Name, user.Id);
+            
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                // Delete old photo if it's not the default
+                if (!dbUser.ProfilePhotoUrl.Contains("default-avatar"))
+                {
+                    await PhotoService.DeletePhotoAsync(dbUser.ProfilePhotoUrl, user.Id);
+                }
+                
+                dbUser.ProfilePhotoUrl = photoUrl;
+                await context.SaveChangesAsync();
+                
+                user.ProfilePhotoUrl = photoUrl;
+                successMessage = "Profile photo updated successfully!";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = ex.Message.Contains("Invalid photo") ? ex.Message : "Failed to upload photo. Please try again.";
+            Console.WriteLine($"Photo upload error: {ex}");
+        }
+        finally
+        {
+            isUploadingProfile = false;
+        }
+    }
+    
+    private async Task UploadAdditionalPhoto(InputFileChangeEventArgs e)
+    {
+        if (user == null || user.PhotoUrls.Count >= 5 || isUploadingAdditional) return;
+        
+        var file = e.File;
+        if (file == null) return;
+        
+        // Validate file type
+        var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        {
+            uploadError = "Please upload a valid image file (JPEG, PNG, or GIF).";
+            return;
+        }
+        
+        // Validate file size (5MB max)
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            uploadError = "File size must be less than 5MB.";
+            return;
+        }
+        
+        isUploadingAdditional = true;
+        uploadError = "";
+        
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var photoUrl = await PhotoService.UploadPhotoAsync(stream, file.Name, user.Id);
+            
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.PhotoUrls.Add(photoUrl);
+                await context.SaveChangesAsync();
+                
+                user.PhotoUrls.Add(photoUrl);
+                successMessage = "Photo added successfully!";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = ex.Message.Contains("Invalid photo") ? ex.Message : "Failed to upload photo. Please try again.";
+            Console.WriteLine($"Photo upload error: {ex}");
+        }
+        finally
+        {
+            isUploadingAdditional = false;
+        }
+    }
+    
+    private async Task DeletePhoto(string photoUrl)
+    {
+        if (user == null) return;
+        
+        try
+        {
+            await PhotoService.DeletePhotoAsync(photoUrl, user.Id);
+            
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.PhotoUrls.Remove(photoUrl);
+                await context.SaveChangesAsync();
+                
+                user.PhotoUrls.Remove(photoUrl);
+                successMessage = "Photo deleted!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to delete photo. Please try again.";
+            Console.WriteLine($"Photo delete error: {ex}");
+        }
+    }
+    
+    private async Task AddTag()
+    {
+        if (user == null || string.IsNullOrWhiteSpace(newTag) || user.InterestTags.Count >= 10) return;
+        
+        var tag = newTag.Trim().ToLower();
+        if (user.InterestTags.Contains(tag))
+        {
+            newTag = "";
+            return;
+        }
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.InterestTags.Add(tag);
+                await context.SaveChangesAsync();
+                
+                user.InterestTags.Add(tag);
+                newTag = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to add tag. Please try again.";
+            Console.WriteLine($"Tag add error: {ex}");
+        }
+    }
+    
+    private async Task AddPopularTag(string tag)
+    {
+        if (user == null || user.InterestTags.Count >= 10 || user.InterestTags.Contains(tag)) return;
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.InterestTags.Add(tag);
+                await context.SaveChangesAsync();
+                
+                user.InterestTags.Add(tag);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to add tag. Please try again.";
+            Console.WriteLine($"Tag add error: {ex}");
+        }
+    }
+    
+    private async Task RemoveTag(string tag)
+    {
+        if (user == null) return;
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.InterestTags.Remove(tag);
+                await context.SaveChangesAsync();
+                
+                user.InterestTags.Remove(tag);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to remove tag. Please try again.";
+            Console.WriteLine($"Tag remove error: {ex}");
+        }
+    }
+    
+    private async Task GetCurrentLocation()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("getCurrentLocation");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to get location. Please enter manually.";
+            Console.WriteLine($"Location error: {ex}");
+        }
+    }
+    
+    private async Task SaveLocation()
+    {
+        if (isSubmitting || user == null) return;
+        
+        isSubmitting = true;
+        errorMessage = "";
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var dbUser = await context.Users.FindAsync(user.Id);
+            if (dbUser != null)
+            {
+                dbUser.Latitude = user.Latitude;
+                dbUser.Longitude = user.Longitude;
+                await context.SaveChangesAsync();
+                
+                successMessage = "Location updated successfully!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to update location. Please try again.";
+            Console.WriteLine($"Location update error: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+    
+    [JSInvokable]
+    public async Task UpdateLocation(double latitude, double longitude)
+    {
+        if (user != null)
+        {
+            user.Latitude = latitude;
+            user.Longitude = longitude;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
+</AuthRequired>

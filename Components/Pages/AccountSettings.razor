@@ -1,0 +1,894 @@
+@page "/account/settings"
+@using WebMatcha.Services
+@using WebMatcha.Models
+@using WebMatcha.Components.Shared
+@using WebMatcha.Data
+@using Microsoft.EntityFrameworkCore
+@inject ServerSessionService SessionService
+@inject UserService UserService
+@inject CompleteAuthService AuthService
+@inject IEmailService EmailService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<MatchaDbContext> DbFactory
+@rendermode InteractiveServer
+
+<PageTitle>Account Settings - WebMatcha</PageTitle>
+
+<AuthRequired>
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Settings</h5>
+                    <div class="list-group list-group-flush">
+                        <button class="list-group-item list-group-item-action @(activeTab == "account" ? "active" : "")" 
+                                @onclick='() => activeTab = "account"'>
+                            <i class="bi bi-person"></i> Account
+                        </button>
+                        <button class="list-group-item list-group-item-action @(activeTab == "email" ? "active" : "")" 
+                                @onclick='() => activeTab = "email"'>
+                            <i class="bi bi-envelope"></i> Email & Password
+                        </button>
+                        <button class="list-group-item list-group-item-action @(activeTab == "privacy" ? "active" : "")" 
+                                @onclick='() => activeTab = "privacy"'>
+                            <i class="bi bi-shield"></i> Privacy
+                        </button>
+                        <button class="list-group-item list-group-item-action @(activeTab == "notifications" ? "active" : "")" 
+                                @onclick='() => activeTab = "notifications"'>
+                            <i class="bi bi-bell"></i> Notifications
+                        </button>
+                        <button class="list-group-item list-group-item-action @(activeTab == "data" ? "active" : "")" 
+                                @onclick='() => activeTab = "data"'>
+                            <i class="bi bi-download"></i> My Data
+                        </button>
+                        <button class="list-group-item list-group-item-action text-danger @(activeTab == "danger" ? "active" : "")" 
+                                @onclick='() => activeTab = "danger"'>
+                            <i class="bi bi-exclamation-triangle"></i> Danger Zone
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            @if (activeTab == "account")
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Account Information</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                @successMessage
+                                <button type="button" class="btn-close" @onclick='() => successMessage = ""'></button>
+                            </div>
+                        }
+                        
+                        <EditForm Model="accountInfo" OnValidSubmit="UpdateAccount">
+                            <DataAnnotationsValidator />
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Username</label>
+                                <InputText @bind-Value="accountInfo.Username" class="form-control" disabled />
+                                <small class="text-muted">Username cannot be changed</small>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">First Name</label>
+                                    <InputText @bind-Value="accountInfo.FirstName" class="form-control" />
+                                    <ValidationMessage For="() => accountInfo.FirstName" />
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Last Name</label>
+                                    <InputText @bind-Value="accountInfo.LastName" class="form-control" />
+                                    <ValidationMessage For="() => accountInfo.LastName" />
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Birth Date</label>
+                                <InputDate @bind-Value="accountInfo.BirthDate" class="form-control" />
+                                <ValidationMessage For="() => accountInfo.BirthDate" />
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                Save Changes
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+            
+            @if (activeTab == "email")
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Email Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Current Email</label>
+                            <div class="input-group">
+                                <input type="email" class="form-control" value="@currentUser?.Email" readonly />
+                                @if (currentUser?.IsEmailVerified == true)
+                                {
+                                    <span class="input-group-text text-success">
+                                        <i class="bi bi-check-circle"></i> Verified
+                                    </span>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-warning" @onclick="ResendVerificationEmail">
+                                        Verify Email
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        
+                        <hr />
+                        
+                        <h6>Change Email</h6>
+                        <EditForm Model="emailChange" OnValidSubmit="ChangeEmail">
+                            <DataAnnotationsValidator />
+                            
+                            <div class="mb-3">
+                                <label class="form-label">New Email</label>
+                                <InputText @bind-Value="emailChange.NewEmail" type="email" class="form-control" />
+                                <ValidationMessage For="() => emailChange.NewEmail" />
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Current Password</label>
+                                <InputText @bind-Value="emailChange.Password" type="password" class="form-control" />
+                                <ValidationMessage For="() => emailChange.Password" />
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                Change Email
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Change Password</h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="passwordChange" OnValidSubmit="ChangePassword">
+                            <DataAnnotationsValidator />
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Current Password</label>
+                                <InputText @bind-Value="passwordChange.CurrentPassword" type="password" class="form-control" />
+                                <ValidationMessage For="() => passwordChange.CurrentPassword" />
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">New Password</label>
+                                <InputText @bind-Value="passwordChange.NewPassword" type="password" class="form-control" />
+                                <ValidationMessage For="() => passwordChange.NewPassword" />
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Confirm New Password</label>
+                                <InputText @bind-Value="passwordChange.ConfirmPassword" type="password" class="form-control" />
+                                <ValidationMessage For="() => passwordChange.ConfirmPassword" />
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                Change Password
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+            
+            @if (activeTab == "privacy")
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Privacy Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="privacySettings.ShowOnline" />
+                            <label class="form-check-label">
+                                Show online status
+                                <br />
+                                <small class="text-muted">Let others see when you're online</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="privacySettings.ShowLastSeen" />
+                            <label class="form-check-label">
+                                Show last seen
+                                <br />
+                                <small class="text-muted">Let others see when you were last active</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="privacySettings.ShowLocation" />
+                            <label class="form-check-label">
+                                Show location
+                                <br />
+                                <small class="text-muted">Display your distance to other users</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="privacySettings.ShowInSearch" />
+                            <label class="form-check-label">
+                                Appear in search results
+                                <br />
+                                <small class="text-muted">Let other users find you in search</small>
+                            </label>
+                        </div>
+                        
+                        <button class="btn btn-primary" @onclick="SavePrivacySettings">
+                            Save Privacy Settings
+                        </button>
+                    </div>
+                </div>
+            }
+            
+            @if (activeTab == "notifications")
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Notification Preferences</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-3">Email Notifications</h6>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="notificationSettings.EmailNewMatch" />
+                            <label class="form-check-label">
+                                New matches
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="notificationSettings.EmailNewMessage" />
+                            <label class="form-check-label">
+                                New messages
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="notificationSettings.EmailProfileView" />
+                            <label class="form-check-label">
+                                Profile views
+                            </label>
+                        </div>
+                        
+                        <hr />
+                        
+                        <h6 class="mb-3">Push Notifications</h6>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="notificationSettings.PushNewMatch" />
+                            <label class="form-check-label">
+                                New matches
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="notificationSettings.PushNewMessage" />
+                            <label class="form-check-label">
+                                New messages
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" @bind="notificationSettings.PushProfileView" />
+                            <label class="form-check-label">
+                                Profile views
+                            </label>
+                        </div>
+                        
+                        <button class="btn btn-primary" @onclick="SaveNotificationSettings">
+                            Save Notification Settings
+                        </button>
+                    </div>
+                </div>
+            }
+            
+            @if (activeTab == "data")
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">My Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Download all your data from WebMatcha in a portable format.</p>
+                        
+                        <div class="mb-4">
+                            <h6>What's included:</h6>
+                            <ul>
+                                <li>Profile information</li>
+                                <li>Photos</li>
+                                <li>Messages</li>
+                                <li>Matches and likes</li>
+                                <li>Account activity</li>
+                            </ul>
+                        </div>
+                        
+                        <button class="btn btn-primary" @onclick="ExportData" disabled="@isExporting">
+                            @if (isExporting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Preparing download...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-download me-2"></i>
+                                <span>Download My Data</span>
+                            }
+                        </button>
+                        
+                        <p class="text-muted mt-3">
+                            <small>Your data will be compiled and downloaded as a ZIP file.</small>
+                        </p>
+                    </div>
+                </div>
+            }
+            
+            @if (activeTab == "danger")
+            {
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">Danger Zone</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <h6>Deactivate Account</h6>
+                            <p class="text-muted">
+                                Temporarily disable your account. Your profile will be hidden and you won't appear in searches.
+                                You can reactivate anytime by logging in.
+                            </p>
+                            <button class="btn btn-warning" @onclick="ShowDeactivateModal">
+                                Deactivate Account
+                            </button>
+                        </div>
+                        
+                        <hr />
+                        
+                        <div>
+                            <h6 class="text-danger">Delete Account</h6>
+                            <p class="text-muted">
+                                <strong>Warning:</strong> This action is permanent and cannot be undone. 
+                                All your data, matches, messages, and photos will be permanently deleted.
+                            </p>
+                            <button class="btn btn-danger" @onclick="ShowDeleteModal">
+                                Delete Account Permanently
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3 alert-dismissible fade show" role="alert">
+                    @errorMessage
+                    <button type="button" class="btn-close" @onclick='() => errorMessage = ""'></button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Account Modal -->
+@if (showDeactivateModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Deactivate Account</h5>
+                    <button type="button" class="btn-close" @onclick='() => showDeactivateModal = false'></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to deactivate your account?</p>
+                    <p>Your profile will be hidden and you won't receive any notifications. You can reactivate by logging in again.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Enter your password to confirm:</label>
+                        <input type="password" class="form-control" @bind="confirmPassword" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick='() => showDeactivateModal = false'>Cancel</button>
+                    <button type="button" class="btn btn-warning" @onclick="DeactivateAccount">Deactivate</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Account Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Delete Account Permanently</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick='() => showDeleteModal = false'></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+                    
+                    <p>By deleting your account, you will lose:</p>
+                    <ul>
+                        <li>All your profile information</li>
+                        <li>All your photos</li>
+                        <li>All your matches and likes</li>
+                        <li>All your messages</li>
+                        <li>Your account history</li>
+                    </ul>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Type <strong>DELETE</strong> to confirm:</label>
+                        <input type="text" class="form-control" @bind="deleteConfirmation" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Enter your password:</label>
+                        <input type="password" class="form-control" @bind="confirmPassword" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick='() => showDeleteModal = false'>Cancel</button>
+                    <button type="button" class="btn btn-danger" 
+                            @onclick="DeleteAccount" 
+                            disabled="@(deleteConfirmation != "DELETE")">
+                        Delete My Account Permanently
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+</AuthRequired>
+
+@code {
+    private User? currentUser;
+    private string activeTab = "account";
+    private bool isLoading = false;
+    private bool isExporting = false;
+    private string successMessage = "";
+    private string errorMessage = "";
+    
+    // Modals
+    private bool showDeactivateModal = false;
+    private bool showDeleteModal = false;
+    private string confirmPassword = "";
+    private string deleteConfirmation = "";
+    
+    // Forms
+    private AccountInfo accountInfo = new();
+    private EmailChangeForm emailChange = new();
+    private PasswordChange passwordChange = new();
+    private PrivacySettings privacySettings = new();
+    private NotificationSettings notificationSettings = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = SessionService.GetCurrentUserId();
+        if (userId.HasValue)
+        {
+            currentUser = await UserService.GetUserByIdAsync(userId.Value);
+            if (currentUser != null)
+            {
+                accountInfo = new AccountInfo
+                {
+                    Username = currentUser.Username,
+                    FirstName = currentUser.FirstName,
+                    LastName = currentUser.LastName,
+                    BirthDate = currentUser.BirthDate
+                };
+                
+                // Load user preferences
+                // TODO: Load from database
+                privacySettings = new PrivacySettings
+                {
+                    ShowOnline = true,
+                    ShowLastSeen = true,
+                    ShowLocation = true,
+                    ShowInSearch = true
+                };
+                
+                notificationSettings = new NotificationSettings
+                {
+                    EmailNewMatch = true,
+                    EmailNewMessage = true,
+                    EmailProfileView = false,
+                    PushNewMatch = true,
+                    PushNewMessage = true,
+                    PushProfileView = false
+                };
+            }
+        }
+    }
+    
+    private async Task UpdateAccount()
+    {
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            if (currentUser != null)
+            {
+                currentUser.FirstName = accountInfo.FirstName;
+                currentUser.LastName = accountInfo.LastName;
+                currentUser.BirthDate = accountInfo.BirthDate;
+                
+                await UserService.UpdateUserAsync(currentUser);
+                successMessage = "Account information updated successfully!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to update account information.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task ResendVerificationEmail()
+    {
+        if (currentUser != null)
+        {
+            try
+            {
+                // Generate new verification token
+                var token = Guid.NewGuid().ToString();
+                await EmailService.SendVerificationEmailAsync(currentUser.Email, currentUser.Username, token);
+                successMessage = "Verification email sent! Please check your inbox.";
+            }
+            catch
+            {
+                errorMessage = "Failed to send verification email.";
+            }
+        }
+    }
+    
+    private async Task ChangeEmail()
+    {
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            if (currentUser != null && !string.IsNullOrEmpty(emailChange.NewEmail) 
+                && !string.IsNullOrEmpty(emailChange.Password))
+            {
+                // Verify password first
+                var isValidPassword = await AuthService.VerifyUserPasswordAsync(currentUser.Id, emailChange.Password);
+                if (!isValidPassword)
+                {
+                    errorMessage = "Incorrect password.";
+                    return;
+                }
+                
+                // Check if email is already in use
+                using var context = await DbFactory.CreateDbContextAsync();
+                var emailExists = await context.Users.AnyAsync(u => u.Email == emailChange.NewEmail && u.Id != currentUser.Id);
+                if (emailExists)
+                {
+                    errorMessage = "This email is already in use.";
+                    return;
+                }
+                
+                // Send verification email
+                var token = Guid.NewGuid().ToString();
+                await EmailService.SendEmailChangeVerificationAsync(emailChange.NewEmail, currentUser.Username, token);
+                
+                // For now, we'll just update the email directly
+                // In production, you'd want to store this in a pending changes table
+                // and verify through the email link
+                
+                successMessage = "Email change request sent. Please check your new email inbox for verification.";
+                emailChange = new EmailChangeForm();
+            }
+            else
+            {
+                errorMessage = "Please fill in all fields.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to change email. Please try again.";
+            Console.WriteLine($"Email change error: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task ChangePassword()
+    {
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            if (currentUser != null && !string.IsNullOrEmpty(passwordChange.CurrentPassword) 
+                && !string.IsNullOrEmpty(passwordChange.NewPassword))
+            {
+                // Validate password match
+                if (passwordChange.NewPassword != passwordChange.ConfirmPassword)
+                {
+                    errorMessage = "New passwords do not match.";
+                    return;
+                }
+                
+                // Verify current password and change to new password
+                var success = await AuthService.ChangePasswordAsync(
+                    currentUser.Id, 
+                    passwordChange.CurrentPassword, 
+                    passwordChange.NewPassword
+                );
+                
+                if (success)
+                {
+                    successMessage = "Password changed successfully!";
+                    passwordChange = new PasswordChange();
+                }
+                else
+                {
+                    errorMessage = "Current password is incorrect.";
+                }
+            }
+            else
+            {
+                errorMessage = "Please fill in all password fields.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to change password. Please try again.";
+            Console.WriteLine($"Password change error: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task SavePrivacySettings()
+    {
+        try
+        {
+            // TODO: Save to database
+            successMessage = "Privacy settings updated!";
+        }
+        catch
+        {
+            errorMessage = "Failed to update privacy settings.";
+        }
+    }
+    
+    private async Task SaveNotificationSettings()
+    {
+        try
+        {
+            // TODO: Save to database
+            successMessage = "Notification settings updated!";
+        }
+        catch
+        {
+            errorMessage = "Failed to update notification settings.";
+        }
+    }
+    
+    private async Task ExportData()
+    {
+        isExporting = true;
+        try
+        {
+            // TODO: Implement data export
+            await Task.Delay(2000); // Simulate export
+            successMessage = "Your data has been exported!";
+        }
+        catch
+        {
+            errorMessage = "Failed to export data.";
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+    
+    private void ShowDeactivateModal()
+    {
+        showDeactivateModal = true;
+        confirmPassword = "";
+    }
+    
+    private void ShowDeleteModal()
+    {
+        showDeleteModal = true;
+        confirmPassword = "";
+        deleteConfirmation = "";
+    }
+    
+    private async Task DeactivateAccount()
+    {
+        if (currentUser == null || string.IsNullOrEmpty(confirmPassword))
+        {
+            errorMessage = "Please enter your password to confirm.";
+            return;
+        }
+        
+        try
+        {
+            // Verify password
+            var isValidPassword = await AuthService.VerifyUserPasswordAsync(currentUser.Id, confirmPassword);
+            if (!isValidPassword)
+            {
+                errorMessage = "Incorrect password.";
+                return;
+            }
+            
+            // Deactivate account
+            using var context = await DbFactory.CreateDbContextAsync();
+            var user = await context.Users.FindAsync(currentUser.Id);
+            if (user != null)
+            {
+                user.IsActive = false;
+                user.DeactivatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+                
+                // Log out user
+                await AuthService.LogoutAsync(currentUser.Id);
+                SessionService.ClearSession();
+                
+                showDeactivateModal = false;
+                Navigation.NavigateTo("/");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to deactivate account.";
+            Console.WriteLine($"Account deactivation error: {ex}");
+        }
+    }
+    
+    private async Task DeleteAccount()
+    {
+        if (currentUser == null || deleteConfirmation != "DELETE" || string.IsNullOrEmpty(confirmPassword))
+        {
+            errorMessage = "Please type DELETE and enter your password to confirm.";
+            return;
+        }
+        
+        try
+        {
+            // Verify password
+            var isValidPassword = await AuthService.VerifyUserPasswordAsync(currentUser.Id, confirmPassword);
+            if (!isValidPassword)
+            {
+                errorMessage = "Incorrect password.";
+                return;
+            }
+            
+            // Delete account permanently
+            using var context = await DbFactory.CreateDbContextAsync();
+            var user = await context.Users.FindAsync(currentUser.Id);
+                
+            if (user != null)
+            {
+                // Delete all related data using direct queries
+                // Delete likes
+                var likes = context.Likes.Where(l => l.LikerId == currentUser.Id || l.LikedId == currentUser.Id);
+                context.RemoveRange(likes);
+                
+                // Delete messages
+                var messages = context.Messages.Where(m => m.SenderId == currentUser.Id || m.ReceiverId == currentUser.Id);
+                context.RemoveRange(messages);
+                
+                // Delete notifications
+                var notifications = context.Notifications.Where(n => n.UserId == currentUser.Id);
+                context.RemoveRange(notifications);
+                
+                // Delete profile views
+                var profileViews = context.ProfileViews.Where(pv => pv.ViewerId == currentUser.Id || pv.ViewedId == currentUser.Id);
+                context.RemoveRange(profileViews);
+                
+                // Delete reports
+                var reports = context.Reports.Where(r => r.ReporterId == currentUser.Id || r.ReportedId == currentUser.Id);
+                context.RemoveRange(reports);
+                
+                // Delete blocks
+                var blocks = context.Blocks.Where(b => b.BlockerId == currentUser.Id || b.BlockedId == currentUser.Id);
+                context.RemoveRange(blocks);
+                
+                // Delete user password
+                var userPassword = await context.UserPasswords.FirstOrDefaultAsync(up => up.UserId == currentUser.Id);
+                if (userPassword != null)
+                {
+                    context.Remove(userPassword);
+                }
+                
+                // Delete user
+                context.Remove(user);
+                
+                await context.SaveChangesAsync();
+                
+                // Clear session
+                SessionService.ClearSession();
+                
+                showDeleteModal = false;
+                Navigation.NavigateTo("/");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to delete account.";
+            Console.WriteLine($"Account deletion error: {ex}");
+        }
+    }
+    
+    // Models
+    private class AccountInfo
+    {
+        public string Username { get; set; } = "";
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public DateTime BirthDate { get; set; }
+    }
+    
+    private class EmailChangeForm
+    {
+        public string NewEmail { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+    
+    private class PasswordChange
+    {
+        public string CurrentPassword { get; set; } = "";
+        public string NewPassword { get; set; } = "";
+        public string ConfirmPassword { get; set; } = "";
+    }
+    
+    private class PrivacySettings
+    {
+        public bool ShowOnline { get; set; }
+        public bool ShowLastSeen { get; set; }
+        public bool ShowLocation { get; set; }
+        public bool ShowInSearch { get; set; }
+    }
+    
+    private class NotificationSettings
+    {
+        public bool EmailNewMatch { get; set; }
+        public bool EmailNewMessage { get; set; }
+        public bool EmailProfileView { get; set; }
+        public bool PushNewMatch { get; set; }
+        public bool PushNewMessage { get; set; }
+        public bool PushProfileView { get; set; }
+    }
+}

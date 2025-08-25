@@ -3,6 +3,8 @@
 @using WebMatcha.Data
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<MatchaDbContext> DbFactory
+@inject ServerSessionService SessionService
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>WebMatcha - Dating App</PageTitle>
@@ -160,6 +162,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Check if user is authenticated and redirect to browse page
+        if (SessionService.IsAuthenticated())
+        {
+            Navigation.NavigateTo("/browse");
+            return;
+        }
+        
         using var context = await DbFactory.CreateDbContextAsync();
         
         userCount = await context.Users.CountAsync();

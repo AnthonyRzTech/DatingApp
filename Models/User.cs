@@ -1,5 +1,14 @@
 namespace WebMatcha.Models;
 
+public enum NotificationType
+{
+    Like,
+    Unlike,
+    ProfileView,
+    Match,
+    Message
+}
+
 public class User
 {
     public int Id { get; set; }
@@ -19,6 +28,11 @@ public class User
     public int FameRating { get; set; }
     public bool IsOnline { get; set; }
     public DateTime LastSeen { get; set; }
+    public bool IsEmailVerified { get; set; }
+    public DateTime? EmailVerifiedAt { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime? DeactivatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
     public int Age => DateTime.Now.Year - BirthDate.Year;
     public double? Distance { get; set; } // Calculated field
 }
@@ -62,6 +76,7 @@ public class Report
     public int ReportedId { get; set; }
     public string Reason { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public bool IsResolved { get; set; }
 }
 
 public class Notification

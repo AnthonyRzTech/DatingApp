@@ -20,6 +20,8 @@ public class MatchaDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Message> Messages { get; set; }
     public DbSet<UserPassword> UserPasswords { get; set; }
+    public DbSet<EmailVerification> EmailVerifications { get; set; }
+    public DbSet<PasswordReset> PasswordResets { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,6 +120,24 @@ public class MatchaDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId).IsUnique();
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
+        });
+
+        // Configure EmailVerification entity
+        modelBuilder.Entity<EmailVerification>(entity =>
+        {
+            entity.ToTable("email_verifications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(255);
+            entity.HasIndex(e => e.Token).IsUnique();
+        });
+
+        // Configure PasswordReset entity
+        modelBuilder.Entity<PasswordReset>(entity =>
+        {
+            entity.ToTable("password_resets");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(255);
+            entity.HasIndex(e => e.Token).IsUnique();
         });
     }
 }

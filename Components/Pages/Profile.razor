@@ -1,13 +1,16 @@
 @page "/profile/{UserId:int?}"
 @using WebMatcha.Services
 @using WebMatcha.Models
+@using WebMatcha.Components.Shared
 @inject UserService UserService
 @inject MatchingService MatchingService
+@inject ServerSessionService SessionService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>@(user?.FirstName ?? "Profile") - WebMatcha</PageTitle>
 
+<AuthRequired>
 @if (user == null)
 {
     <div class="container mt-5">
@@ -257,11 +260,16 @@ else
     private string? selectedImage;
     private List<User> likedByUsers = new();
     private List<User> viewedByUsers = new();
-    // Temporary current user ID - will be replaced with actual auth later
-    private int currentUserId = 1;
+    private int? currentUserId;
     
     protected override async Task OnInitializedAsync()
     {
+        currentUserId = SessionService.GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
         await LoadProfile();
     }
     
@@ -272,39 +280,40 @@ else
     
     private async Task LoadProfile()
     {
-        var profileId = UserId ?? currentUserId;
+        if (!currentUserId.HasValue) return;
+        var profileId = UserId ?? currentUserId.Value;
         user = await UserService.GetUserByIdAsync(profileId);
         
         if (user != null && UserId.HasValue && UserId != currentUserId)
         {
             // Record profile view
-            await MatchingService.RecordProfileViewAsync(currentUserId, UserId.Value);
-            isLiked = await MatchingService.IsLikedAsync(currentUserId, UserId.Value);
-            isMatched = await MatchingService.IsMatchedAsync(currentUserId, UserId.Value);
+            await MatchingService.RecordProfileViewAsync(currentUserId.Value, UserId.Value);
+            isLiked = await MatchingService.IsLikedAsync(currentUserId.Value, UserId.Value);
+            isMatched = await MatchingService.IsMatchedAsync(currentUserId.Value, UserId.Value);
         }
         
-        if (profileId == currentUserId)
+        if (profileId == currentUserId.Value)
         {
-            likedByUsers = await MatchingService.GetUserLikedByAsync(currentUserId);
-            viewedByUsers = await MatchingService.GetProfileViewersAsync(currentUserId);
+            likedByUsers = await MatchingService.GetUserLikedByAsync(currentUserId.Value);
+            viewedByUsers = await MatchingService.GetProfileViewersAsync(currentUserId.Value);
         }
     }
     
     private async Task LikeUser()
     {
-        if (UserId.HasValue)
+        if (UserId.HasValue && currentUserId.HasValue)
         {
-            await MatchingService.LikeUserAsync(currentUserId, UserId.Value);
+            await MatchingService.LikeUserAsync(currentUserId.Value, UserId.Value);
             isLiked = true;
-            isMatched = await MatchingService.IsMatchedAsync(currentUserId, UserId.Value);
+            isMatched = await MatchingService.IsMatchedAsync(currentUserId.Value, UserId.Value);
         }
     }
     
     private async Task UnlikeUser()
     {
-        if (UserId.HasValue)
+        if (UserId.HasValue && currentUserId.HasValue)
         {
-            await MatchingService.UnlikeUserAsync(currentUserId, UserId.Value);
+            await MatchingService.UnlikeUserAsync(currentUserId.Value, UserId.Value);
             isLiked = false;
             isMatched = false;
         }
@@ -312,18 +321,18 @@ else
     
     private async Task BlockUser()
     {
-        if (UserId.HasValue)
+        if (UserId.HasValue && currentUserId.HasValue)
         {
-            await MatchingService.BlockUserAsync(currentUserId, UserId.Value);
+            await MatchingService.BlockUserAsync(currentUserId.Value, UserId.Value);
             Navigation.NavigateTo("/browse");
         }
     }
     
     private async Task ReportUser()
     {
-        if (UserId.HasValue)
+        if (UserId.HasValue && currentUserId.HasValue)
         {
-            await MatchingService.ReportUserAsync(currentUserId, UserId.Value, reportReason);
+            await MatchingService.ReportUserAsync(currentUserId.Value, UserId.Value, reportReason);
             showReportModal = false;
         }
     }
@@ -333,3 +342,4 @@ else
         selectedImage = imageUrl;
     }
 }
+</AuthRequired>
