@@ -1,10 +1,8 @@
 @page "/search"
 @using WebMatcha.Services
 @using WebMatcha.Models
-@using Microsoft.EntityFrameworkCore
-@using WebMatcha.Data
 @using WebMatcha.Components.Shared
-@inject IDbContextFactory<MatchaDbContext> DbFactory
+@inject UserService UserService
 @inject ServerSessionService SessionService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -210,32 +208,34 @@
     private bool useLocation = false;
     private string tagSearch = "";
     private string sortBy = "age";
-    
-    protected override async Task OnInitializedAsync()
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        currentUserId = SessionService.GetCurrentUserId();
-        if (!currentUserId.HasValue)
+        if (firstRender)
         {
-            Navigation.NavigateTo("/login");
-            return;
+            currentUserId = await SessionService.GetCurrentUserIdAsync();
+            if (!currentUserId.HasValue)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            await LoadUsers();
+            await ApplyFilters();
+            isLoading = false;
+            StateHasChanged();
         }
-        
-        await LoadUsers();
-        await ApplyFilters();
     }
     
     private async Task LoadUsers()
     {
-        using var context = await DbFactory.CreateDbContextAsync();
-        
         // Get all users except current user
-        allUsers = await context.Users
-            .Where(u => u.Id != currentUserId!.Value)
-            .ToListAsync();
-            
+        var allUsersList = await UserService.GetAllUsersAsync();
+        allUsers = allUsersList.Where(u => u.Id != currentUserId!.Value).ToList();
+
         // Get current user for location calculation
-        var currentUser = await context.Users.FindAsync(currentUserId.Value);
-        
+        var currentUser = await UserService.GetUserByIdAsync(currentUserId.Value);
+
         if (currentUser != null && useLocation)
         {
             // Calculate distances
@@ -246,14 +246,14 @@
                     user.Latitude, user.Longitude);
             }
         }
-        
+
         // Extract all unique tags
         availableTags = allUsers
             .SelectMany(u => u.InterestTags)
             .Distinct()
             .OrderBy(t => t)
             .ToList();
-            
+
         isLoading = false;
     }
     

@@ -1,15 +1,24 @@
 using WebMatcha.Components;
 using WebMatcha.Services;
-using WebMatcha.Data;
 using WebMatcha.Hubs;
 using WebMatcha.Models;
-using Microsoft.EntityFrameworkCore;
+using WebMatcha.Middleware;
 using DotNetEnv;
+using Dapper;
 
 // Load environment variables
 Env.Load();
 
+// Initialize Dapper type handlers
+DapperConfig.Initialize();
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Add logging with detailed configuration
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // Add Blazor services
 builder.Services.AddRazorComponents()
@@ -30,6 +39,8 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<MatchingService>();
 builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<DataSeederService>();
+builder.Services.AddScoped<DatabaseOptimizationService>();
+builder.Services.AddScoped<DatabaseSchemaService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CompleteAuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -42,19 +53,6 @@ builder.Services.AddScoped<ServerSessionService>();
 // Add HttpContextAccessor for server sessions
 builder.Services.AddHttpContextAccessor();
 
-// Add Database Context
-var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") 
-    ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=q";
-    
-// Add DbContextFactory for Blazor components (replaces AddDbContext for Blazor Server)
-builder.Services.AddDbContextFactory<MatchaDbContext>(options =>
-    options.UseNpgsql(connectionString)
-           .UseSnakeCaseNamingConvention());
-           
-// Also add DbContext for services that need it directly
-builder.Services.AddScoped<MatchaDbContext>(p => 
-    p.GetRequiredService<IDbContextFactory<MatchaDbContext>>().CreateDbContext());
-
 // Add session support for temporary auth (will replace with JWT later)
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -62,8 +60,21 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.Lax; // Important for Blazor Server
+    options.Cookie.SameSite = SameSiteMode.Strict; // Strict CSRF protection
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // HTTPS only
     options.Cookie.Name = ".WebMatcha.Session";
+});
+
+// Add CORS with strict policy (CRITICAL security)
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("https://localhost:7036", "http://localhost:5192")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
 // TODO: Add these services when database is ready
@@ -73,13 +84,35 @@ builder.Services.AddSession(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+// Global exception handler (IMPORTANT - improves error handling and security)
+app.UseMiddleware<GlobalExceptionHandler>();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
 
+// Security headers (CRITICAL - subject requirement)
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("Permissions-Policy", "geolocation=(self), camera=(), microphone=()");
+
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;");
+    }
+
+    await next();
+});
+
 app.UseHttpsRedirection();
+app.UseCors();
 app.UseStaticFiles();
 app.UseSession();
 app.UseAntiforgery();
@@ -106,22 +139,21 @@ app.MapGet("/api/health", () => new
 });
 
 // User count endpoint
-app.MapGet("/api/users/count", async (MatchaDbContext context) =>
+app.MapGet("/api/users/count", async (UserService userService) =>
 {
-    var count = await context.Users.CountAsync();
+    var count = await userService.GetUsersCountAsync();
     return Results.Ok(new { userCount = count });
 });
 
-// Debug endpoint to check users and passwords
-app.MapGet("/api/debug/users", async (MatchaDbContext context) =>
+// Debug endpoint to check users
+app.MapGet("/api/debug/users", async (UserService userService) =>
 {
-    var users = await context.Users.Take(5).ToListAsync();
-    var userPasswords = await context.UserPasswords.Take(5).ToListAsync();
-    
-    return Results.Ok(new 
-    { 
-        users = users.Select(u => new { u.Id, u.Username, u.Email }),
-        passwords = userPasswords.Select(p => new { p.Id, p.UserId, HasPassword = !string.IsNullOrEmpty(p.PasswordHash) })
+    var allUsers = await userService.GetAllUsersAsync();
+    var users = allUsers.Take(5).ToList();
+
+    return Results.Ok(new
+    {
+        users = users.Select(u => new { u.Id, u.Username, u.Email })
     });
 });
 
@@ -157,26 +189,26 @@ app.MapPost("/api/login", async (HttpContext context, CompleteAuthService authSe
     var form = await context.Request.ReadFormAsync();
     var username = form["username"].ToString();
     var password = form["password"].ToString();
-    
+
     if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
     {
         return Results.BadRequest(new { error = "Username and password are required" });
     }
-    
+
     var loginRequest = new LoginRequest { Username = username, Password = password };
     var result = await authService.LoginAsync(loginRequest);
-    
+
     if (result.Success && result.User != null)
     {
         // Set session
         sessionService.SetCurrentUser(result.User);
-        return Results.Ok(new { 
-            success = true, 
+        return Results.Ok(new {
+            success = true,
             message = "Login successful",
             user = new { result.User.Id, result.User.Username, result.User.Email }
         });
     }
-    
+
     return Results.BadRequest(new { error = result.Errors.FirstOrDefault() ?? "Login failed" });
 });
 
@@ -228,29 +260,35 @@ app.MapGet("/api/seed", async (DataSeederService seeder) =>
 });
 
 // Login endpoint (updated to use CompleteAuthService)
-app.MapPost("/auth/login", async (HttpContext context, CompleteAuthService authService) =>
+app.MapPost("/auth/login", async (HttpContext context, CompleteAuthService authService, ServerSessionService sessionService) =>
 {
     var form = await context.Request.ReadFormAsync();
     var username = form["username"].ToString();
     var password = form["password"].ToString();
-    
+    var redirect = form["redirect"].ToString();
+
     if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
     {
         return Results.BadRequest(new { error = "Username and password are required" });
     }
-    
+
     var loginRequest = new LoginRequest { Username = username, Password = password };
     var result = await authService.LoginAsync(loginRequest);
-    
+
     if (result.Success && result.User != null)
     {
-        // Set session data
-        context.Session.SetInt32("CurrentUserId", result.User.Id);
-        context.Session.SetString("CurrentUsername", result.User.Username);
-        
+        // Set session using ServerSessionService (works properly in middleware context)
+        sessionService.SetCurrentUser(result.User);
+
+        // Redirect if requested, otherwise return JSON
+        if (!string.IsNullOrEmpty(redirect))
+        {
+            return Results.Redirect(redirect);
+        }
+
         return Results.Ok(new { success = true, redirectUrl = "/" });
     }
-    
+
     return Results.BadRequest(new { error = string.Join(", ", result.Errors) });
 });
 
@@ -262,18 +300,31 @@ app.MapPost("/auth/logout", async (HttpContext context) =>
     return Results.Ok(new { message = "Logged out successfully" });
 });
 
-// Apply migrations on startup
+// Apply schema, optimizations and seed database on startup
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<MatchaDbContext>();
     try
     {
-        await dbContext.Database.MigrateAsync();
-        Console.WriteLine("Database migrations applied successfully");
+        // Ensure database schema exists
+        var schemaService = scope.ServiceProvider.GetRequiredService<DatabaseSchemaService>();
+        await schemaService.EnsureDatabaseSchemaAsync();
+        Console.WriteLine("Database schema ensured successfully");
+
+        // Apply database optimizations (indexes)
+        var optimizer = scope.ServiceProvider.GetRequiredService<DatabaseOptimizationService>();
+        await optimizer.ApplyOptimizationsAsync();
+        Console.WriteLine("Database optimizations applied");
+
+        // Seed database with 500 profiles if needed (CRITICAL - subject requirement)
+        var seeder = scope.ServiceProvider.GetRequiredService<DataSeederService>();
+        await seeder.SeedDatabaseAsync(500);
+        Console.WriteLine("Database seeding completed");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error applying migrations: {ex.Message}");
+        Console.WriteLine($"Error during startup: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        Console.WriteLine($"Full exception: {ex}");
     }
 }
 

@@ -2,7 +2,17 @@
 @inject ServerSessionService SessionService
 @inject NavigationManager Navigation
 
-@if (isAuthenticated)
+@if (!isLoaded)
+{
+    <div class="container py-5">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+}
+else if (isAuthenticated)
 {
     @ChildContent
 }
@@ -33,17 +43,23 @@ else
 
 @code {
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    
+
     private bool isAuthenticated = false;
-    
-    protected override void OnInitialized()
+    private bool isLoaded = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        isAuthenticated = SessionService.IsAuthenticated();
-        
-        if (!isAuthenticated)
+        if (firstRender)
         {
-            // Optionally redirect to login
-            // Navigation.NavigateTo("/login");
+            isAuthenticated = await SessionService.IsAuthenticatedAsync();
+            isLoaded = true;
+
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/login");
+            }
+
+            StateHasChanged();
         }
     }
 }

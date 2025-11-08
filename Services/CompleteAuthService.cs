@@ -1,24 +1,54 @@
-using Microsoft.EntityFrameworkCore;
-using WebMatcha.Data;
+using Npgsql;
+using Dapper;
 using WebMatcha.Models;
 using BCrypt.Net;
 using System.Security.Cryptography;
 
 namespace WebMatcha.Services;
 
+/// <summary>
+/// CompleteAuthService - Refactoré avec requêtes SQL manuelles
+/// Service d'authentification complet avec email verification et password reset
+/// </summary>
 public class CompleteAuthService : IAuthService
 {
-    private readonly MatchaDbContext _context;
+    private readonly string _connectionString;
     private readonly IEmailService _emailService;
-    
-    public CompleteAuthService(MatchaDbContext context, IEmailService emailService)
+
+    // Common passwords that must be rejected (CRITICAL - subject requirement)
+    private static readonly HashSet<string> CommonPasswords = new(StringComparer.OrdinalIgnoreCase)
     {
-        _context = context;
+        "password", "123456", "123456789", "12345678", "12345", "1234567", "password1",
+        "abc123", "qwerty", "monkey", "1234567890", "letmein", "trustno1", "dragon",
+        "baseball", "111111", "iloveyou", "master", "sunshine", "ashley", "bailey",
+        "passw0rd", "shadow", "123123", "654321", "superman", "qazwsx", "michael",
+        "football", "welcome", "jesus", "ninja", "mustang", "password123", "admin",
+        "hello", "charlie", "696969", "hottie", "freedom", "aa123456", "princess",
+        "qwertyuiop", "solo", "loveme", "whatever", "donald", "dragon", "michael",
+        "starwars", "computer", "michelle", "jessica", "pepper", "1111", "zxcvbnm",
+        "555555", "11111111", "131313", "freedom", "777777", "pass", "maggie",
+        "jordan", "superman", "harley", "1234", "robert", "matthew", "cheese",
+        "tigger", "princess", "maverick", "austin", "hockey", "yellow", "ranger",
+        "secret", "andrew", "samsung", "test123", "jordan23", "killer", "fuckyou",
+        "trustno1", "batman", "thomas", "hockey", "ranger", "daniel", "online",
+        "letmein", "test", "qwerty123", "welcome", "Login", "admin123", "abc123"
+    };
+
+    public CompleteAuthService(IConfiguration configuration, IEmailService emailService)
+    {
+        _connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+            ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=q";
         _emailService = emailService;
     }
-    
+
     public async Task<AuthResult> RegisterAsync(RegisterRequest request)
     {
+        // Sanitize inputs to prevent XSS attacks (CRITICAL security requirement)
+        request.Username = InputSanitizer.SanitizeUsername(request.Username);
+        request.Email = InputSanitizer.SanitizeEmail(request.Email);
+        request.FirstName = InputSanitizer.SanitizeText(request.FirstName);
+        request.LastName = InputSanitizer.SanitizeText(request.LastName);
+
         var errors = ValidateRegistration(request);
         if (errors.Any())
         {
@@ -29,89 +59,109 @@ public class CompleteAuthService : IAuthService
                 Errors = errors
             };
         }
-        
-        // Check if username or email already exists
-        var existingUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
-            
-        if (existingUser != null)
-        {
-            var error = existingUser.Username == request.Username 
-                ? "Username already exists" 
-                : "Email already exists";
-            return new AuthResult
-            {
-                Success = false,
-                Message = error,
-                Errors = new List<string> { error }
-            };
-        }
-        
-        // Begin transaction
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var transaction = await connection.BeginTransactionAsync();
+
         try
         {
+            // Check if username or email already exists
+            const string checkExistsSql = "SELECT COUNT(*) FROM users WHERE username = @Username OR email = @Email";
+            var existsCount = await connection.ExecuteScalarAsync<int>(checkExistsSql, new { request.Username, request.Email }, transaction);
+
+            if (existsCount > 0)
+            {
+                // Check which one exists
+                const string checkUsernameSql = "SELECT COUNT(*) FROM users WHERE username = @Username";
+                var usernameExists = await connection.ExecuteScalarAsync<int>(checkUsernameSql, new { request.Username }, transaction) > 0;
+
+                var error = usernameExists ? "Username already exists" : "Email already exists";
+                await transaction.RollbackAsync();
+                return new AuthResult
+                {
+                    Success = false,
+                    Message = error,
+                    Errors = new List<string> { error }
+                };
+            }
+
             // Create new user
-            var user = new User
+            const string insertUserSql = @"
+                INSERT INTO users (
+                    username, email, first_name, last_name, birth_date,
+                    gender, sexual_preference, biography, interest_tags,
+                    profile_photo_url, photo_urls, latitude, longitude,
+                    fame_rating, is_online, last_seen, is_email_verified,
+                    email_verified_at, is_active, created_at
+                ) VALUES (
+                    @Username, @Email, @FirstName, @LastName, @BirthDate,
+                    @Gender, @SexualPreference, '', '',
+                    '/images/default-avatar.png', '', 0, 0,
+                    0, false, @Now, false,
+                    NULL, true, @Now
+                )
+                RETURNING id
+            ";
+
+            var now = DateTime.UtcNow;
+            var userId = await connection.ExecuteScalarAsync<int>(insertUserSql, new
             {
-                Username = request.Username,
-                Email = request.Email,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
+                request.Username,
+                request.Email,
+                request.FirstName,
+                request.LastName,
                 BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc),
-                Gender = request.Gender,
-                SexualPreference = request.SexualPreference,
-                Biography = "",
-                InterestTags = new List<string>(),
-                ProfilePhotoUrl = "/images/default-avatar.png",
-                PhotoUrls = new List<string>(),
-                Latitude = 0,
-                Longitude = 0,
-                FameRating = 0,
-                IsOnline = false,
-                LastSeen = DateTime.UtcNow,
-                IsEmailVerified = false,
-                EmailVerifiedAt = null,
-                CreatedAt = DateTime.UtcNow
-            };
-            
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-            
-            // Hash password
+                request.Gender,
+                request.SexualPreference,
+                Now = now
+            }, transaction);
+
+            // Hash and store password
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password, 12);
-            
-            // Store password
-            var passwordEntry = new UserPassword
+            const string insertPasswordSql = @"
+                INSERT INTO user_passwords (user_id, password_hash, created_at)
+                VALUES (@UserId, @PasswordHash, @CreatedAt)
+            ";
+            await connection.ExecuteAsync(insertPasswordSql, new
             {
-                UserId = user.Id,
+                UserId = userId,
                 PasswordHash = hashedPassword,
-                CreatedAt = DateTime.UtcNow
-            };
-            
-            _context.UserPasswords.Add(passwordEntry);
-            await _context.SaveChangesAsync();
-            
+                CreatedAt = now
+            }, transaction);
+
             // Create email verification token
             var verificationToken = GenerateSecureToken();
-            var emailVerification = new EmailVerification
+            const string insertVerificationSql = @"
+                INSERT INTO email_verifications (user_id, token, created_at, expires_at, is_used)
+                VALUES (@UserId, @Token, @CreatedAt, @ExpiresAt, false)
+            ";
+            await connection.ExecuteAsync(insertVerificationSql, new
             {
-                UserId = user.Id,
+                UserId = userId,
                 Token = verificationToken,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddHours(24),
-                IsUsed = false
-            };
-            
-            _context.EmailVerifications.Add(emailVerification);
-            await _context.SaveChangesAsync();
-            
-            // Send verification email
-            await _emailService.SendVerificationEmailAsync(user.Email, user.Username, verificationToken);
-            
+                CreatedAt = now,
+                ExpiresAt = now.AddHours(24)
+            }, transaction);
+
             await transaction.CommitAsync();
-            
+
+            // Send verification email
+            await _emailService.SendVerificationEmailAsync(request.Email, request.Username, verificationToken);
+
+            // Get created user
+            const string getUserSql = @"
+                SELECT id, username, email, first_name AS FirstName, last_name AS LastName,
+                    birth_date AS BirthDate, gender, sexual_preference AS SexualPreference,
+                    biography, interest_tags AS InterestTags, profile_photo_url AS ProfilePhotoUrl,
+                    photo_urls AS PhotoUrls, latitude, longitude, fame_rating AS FameRating,
+                    is_online AS IsOnline, last_seen AS LastSeen, is_email_verified AS IsEmailVerified,
+                    email_verified_at AS EmailVerifiedAt, is_active AS IsActive,
+                    created_at AS CreatedAt
+                FROM users WHERE id = @UserId
+            ";
+            var user = await connection.QueryFirstAsync<User>(getUserSql, new { UserId = userId });
+
             return new AuthResult
             {
                 Success = true,
@@ -131,7 +181,7 @@ public class CompleteAuthService : IAuthService
             };
         }
     }
-    
+
     public async Task<AuthResult> LoginAsync(LoginRequest request)
     {
         var errors = ValidateLogin(request);
@@ -144,11 +194,24 @@ public class CompleteAuthService : IAuthService
                 Errors = errors
             };
         }
-        
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
         // Find user by username or email
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Username);
-            
+        const string findUserSql = @"
+            SELECT id, username, email, first_name AS FirstName, last_name AS LastName,
+                birth_date AS BirthDate, gender, sexual_preference AS SexualPreference,
+                biography, profile_photo_url AS ProfilePhotoUrl,
+                latitude, longitude, fame_rating AS FameRating,
+                is_online AS IsOnline, last_seen AS LastSeen, is_email_verified AS IsEmailVerified,
+                email_verified_at AS EmailVerifiedAt, is_active AS IsActive,
+                created_at AS CreatedAt
+            FROM users
+            WHERE username = @Username OR email = @Username
+        ";
+        var user = await connection.QueryFirstOrDefaultAsync<User>(findUserSql, new { Username = request.Username });
+
         if (user == null)
         {
             return new AuthResult
@@ -158,7 +221,7 @@ public class CompleteAuthService : IAuthService
                 Errors = new List<string> { "Invalid credentials" }
             };
         }
-        
+
         // Check if email is verified
         if (!user.IsEmailVerified)
         {
@@ -169,12 +232,12 @@ public class CompleteAuthService : IAuthService
                 Errors = new List<string> { "Please verify your email before logging in" }
             };
         }
-        
+
         // Get password hash
-        var passwordEntry = await _context.UserPasswords
-            .FirstOrDefaultAsync(p => p.UserId == user.Id);
-            
-        if (passwordEntry == null)
+        const string getPasswordSql = "SELECT password_hash FROM user_passwords WHERE user_id = @UserId";
+        var passwordHash = await connection.QueryFirstOrDefaultAsync<string>(getPasswordSql, new { UserId = user.Id });
+
+        if (string.IsNullOrEmpty(passwordHash))
         {
             return new AuthResult
             {
@@ -183,10 +246,10 @@ public class CompleteAuthService : IAuthService
                 Errors = new List<string> { "Invalid credentials" }
             };
         }
-        
+
         // Verify password
-        bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, passwordEntry.PasswordHash);
-        
+        bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, passwordHash);
+
         if (!isValidPassword)
         {
             return new AuthResult
@@ -196,12 +259,14 @@ public class CompleteAuthService : IAuthService
                 Errors = new List<string> { "Invalid credentials" }
             };
         }
-        
+
         // Update last seen
+        const string updateLastSeenSql = "UPDATE users SET last_seen = @Now, is_online = true WHERE id = @UserId";
+        await connection.ExecuteAsync(updateLastSeenSql, new { UserId = user.Id, Now = DateTime.UtcNow });
+
         user.LastSeen = DateTime.UtcNow;
         user.IsOnline = true;
-        await _context.SaveChangesAsync();
-        
+
         return new AuthResult
         {
             Success = true,
@@ -209,106 +274,223 @@ public class CompleteAuthService : IAuthService
             User = user
         };
     }
-    
+
     public async Task<bool> VerifyEmailAsync(string token)
     {
-        var verification = await _context.EmailVerifications
-            .Include(v => v.User)
-            .FirstOrDefaultAsync(v => v.Token == token && !v.IsUsed);
-            
-        if (verification == null || verification.ExpiresAt < DateTime.UtcNow)
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var transaction = await connection.BeginTransactionAsync();
+
+        try
         {
+            // Find verification token
+            const string findTokenSql = @"
+                SELECT user_id, expires_at
+                FROM email_verifications
+                WHERE token = @Token AND is_used = false
+            ";
+            var verification = await connection.QueryFirstOrDefaultAsync<(int user_id, DateTime expires_at)>(findTokenSql, new { Token = token }, transaction);
+
+            if (verification == default || verification.expires_at < DateTime.UtcNow)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            // Mark token as used
+            const string markUsedSql = "UPDATE email_verifications SET is_used = true WHERE token = @Token";
+            await connection.ExecuteAsync(markUsedSql, new { Token = token }, transaction);
+
+            // Update user email verified status
+            const string verifyUserSql = @"
+                UPDATE users
+                SET is_email_verified = true, email_verified_at = @Now
+                WHERE id = @UserId
+            ";
+            await connection.ExecuteAsync(verifyUserSql, new { UserId = verification.user_id, Now = DateTime.UtcNow }, transaction);
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
             return false;
         }
-        
-        verification.IsUsed = true;
-        verification.User.IsEmailVerified = true;
-        verification.User.EmailVerifiedAt = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync();
-        return true;
     }
-    
+
     public async Task<bool> SendPasswordResetAsync(string email)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null)
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        // Find user by email
+        const string findUserSql = "SELECT id, username FROM users WHERE email = @Email";
+        var user = await connection.QueryFirstOrDefaultAsync<(int id, string username)>(findUserSql, new { Email = email });
+
+        if (user == default)
         {
             // Don't reveal if email exists
             return true;
         }
-        
+
         // Create reset token
         var resetToken = GenerateSecureToken();
-        var passwordReset = new PasswordReset
+        const string insertResetSql = @"
+            INSERT INTO password_resets (user_id, token, created_at, expires_at, is_used)
+            VALUES (@UserId, @Token, @CreatedAt, @ExpiresAt, false)
+        ";
+        var now = DateTime.UtcNow;
+        await connection.ExecuteAsync(insertResetSql, new
         {
-            UserId = user.Id,
+            UserId = user.id,
             Token = resetToken,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            IsUsed = false
-        };
-        
-        _context.PasswordResets.Add(passwordReset);
-        await _context.SaveChangesAsync();
-        
+            CreatedAt = now,
+            ExpiresAt = now.AddHours(1)
+        });
+
         // Send reset email
-        await _emailService.SendPasswordResetEmailAsync(user.Email, user.Username, resetToken);
-        
+        await _emailService.SendPasswordResetEmailAsync(email, user.username, resetToken);
+
         return true;
     }
-    
+
     public async Task<bool> ResetPasswordAsync(string token, string newPassword)
     {
-        var reset = await _context.PasswordResets
-            .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.Token == token && !r.IsUsed);
-            
-        if (reset == null || reset.ExpiresAt < DateTime.UtcNow)
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var transaction = await connection.BeginTransactionAsync();
+
+        try
         {
+            // Find reset token
+            const string findTokenSql = @"
+                SELECT user_id, expires_at
+                FROM password_resets
+                WHERE token = @Token AND is_used = false
+            ";
+            var reset = await connection.QueryFirstOrDefaultAsync<(int user_id, DateTime expires_at)>(findTokenSql, new { Token = token }, transaction);
+
+            if (reset == default || reset.expires_at < DateTime.UtcNow)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            // Hash new password
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword, 12);
+
+            // Update password
+            const string updatePasswordSql = "UPDATE user_passwords SET password_hash = @PasswordHash WHERE user_id = @UserId";
+            var rowsAffected = await connection.ExecuteAsync(updatePasswordSql, new { UserId = reset.user_id, PasswordHash = hashedPassword }, transaction);
+
+            if (rowsAffected == 0)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            // Mark token as used
+            const string markUsedSql = "UPDATE password_resets SET is_used = true WHERE token = @Token";
+            await connection.ExecuteAsync(markUsedSql, new { Token = token }, transaction);
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
             return false;
         }
-        
-        // Get user password entry
-        var passwordEntry = await _context.UserPasswords
-            .FirstOrDefaultAsync(p => p.UserId == reset.UserId);
-            
-        if (passwordEntry == null)
-        {
-            return false;
-        }
-        
-        // Update password
-        passwordEntry.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, 12);
-        reset.IsUsed = true;
-        
-        await _context.SaveChangesAsync();
-        return true;
     }
-    
+
     public async Task LogoutAsync(int userId)
     {
-        var user = await _context.Users.FindAsync(userId);
-        if (user != null)
-        {
-            user.IsOnline = false;
-            user.LastSeen = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-        }
+        const string sql = "UPDATE users SET is_online = false, last_seen = @Now WHERE id = @UserId";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(sql, new { UserId = userId, Now = DateTime.UtcNow });
     }
-    
+
+    public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+    {
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        // Get current password hash
+        const string getPasswordSql = "SELECT password_hash FROM user_passwords WHERE user_id = @UserId";
+        var passwordHash = await connection.QueryFirstOrDefaultAsync<string>(getPasswordSql, new { UserId = userId });
+
+        if (string.IsNullOrEmpty(passwordHash))
+        {
+            return false;
+        }
+
+        // Verify current password
+        if (!BCrypt.Net.BCrypt.Verify(currentPassword, passwordHash))
+        {
+            return false;
+        }
+
+        // Update to new password
+        var newHashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword, 12);
+        const string updatePasswordSql = "UPDATE user_passwords SET password_hash = @PasswordHash WHERE user_id = @UserId";
+        await connection.ExecuteAsync(updatePasswordSql, new { UserId = userId, PasswordHash = newHashedPassword });
+
+        return true;
+    }
+
+    public async Task<bool> VerifyUserPasswordAsync(int userId, string password)
+    {
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string getPasswordSql = "SELECT password_hash FROM user_passwords WHERE user_id = @UserId";
+        var passwordHash = await connection.QueryFirstOrDefaultAsync<string>(getPasswordSql, new { UserId = userId });
+
+        if (string.IsNullOrEmpty(passwordHash))
+        {
+            return false;
+        }
+
+        return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+    }
+
     private string GenerateSecureToken()
     {
+        // Generate cryptographically secure random token (256 bits)
         var randomBytes = new byte[32];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
-        return Convert.ToBase64String(randomBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
+
+        // Add timestamp entropy for uniqueness
+        var timestamp = BitConverter.GetBytes(DateTime.UtcNow.Ticks);
+        var combined = new byte[randomBytes.Length + timestamp.Length];
+        Buffer.BlockCopy(randomBytes, 0, combined, 0, randomBytes.Length);
+        Buffer.BlockCopy(timestamp, 0, combined, randomBytes.Length, timestamp.Length);
+
+        // Hash the combined data for additional security
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hash = sha256.ComputeHash(combined);
+
+        // Convert to URL-safe Base64
+        return Convert.ToBase64String(hash)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .Replace("=", "");
     }
-    
+
+    private bool IsTokenExpired(DateTime expiresAt)
+    {
+        return DateTime.UtcNow > expiresAt;
+    }
+
     private List<string> ValidateRegistration(RegisterRequest request)
     {
         var errors = new List<string>();
-        
+
         if (string.IsNullOrWhiteSpace(request.Username))
             errors.Add("Username is required");
         else if (request.Username.Length < 3)
@@ -317,55 +499,57 @@ public class CompleteAuthService : IAuthService
             errors.Add("Username must be less than 50 characters");
         else if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]+$"))
             errors.Add("Username can only contain letters, numbers, and underscores");
-            
+
         if (string.IsNullOrWhiteSpace(request.Email))
             errors.Add("Email is required");
         else if (!IsValidEmail(request.Email))
             errors.Add("Invalid email format");
-            
+
         if (string.IsNullOrWhiteSpace(request.Password))
             errors.Add("Password is required");
         else if (request.Password.Length < 6)
             errors.Add("Password must be at least 6 characters");
         else if (!IsStrongPassword(request.Password))
             errors.Add("Password must contain at least one uppercase letter, one lowercase letter, and one number");
-            
+        else if (CommonPasswords.Contains(request.Password))
+            errors.Add("Password is too common. Please choose a more secure password");
+
         if (request.Password != request.ConfirmPassword)
             errors.Add("Passwords do not match");
-            
+
         if (string.IsNullOrWhiteSpace(request.FirstName))
             errors.Add("First name is required");
-            
+
         if (string.IsNullOrWhiteSpace(request.LastName))
             errors.Add("Last name is required");
-            
+
         if (request.BirthDate == default(DateTime))
             errors.Add("Birth date is required");
         else if (DateTime.Now.Year - request.BirthDate.Year < 18)
             errors.Add("You must be at least 18 years old");
-            
+
         if (string.IsNullOrWhiteSpace(request.Gender))
             errors.Add("Gender is required");
-            
+
         if (string.IsNullOrWhiteSpace(request.SexualPreference))
             errors.Add("Sexual preference is required");
-            
+
         return errors;
     }
-    
+
     private List<string> ValidateLogin(LoginRequest request)
     {
         var errors = new List<string>();
-        
+
         if (string.IsNullOrWhiteSpace(request.Username))
             errors.Add("Username or email is required");
-            
+
         if (string.IsNullOrWhiteSpace(request.Password))
             errors.Add("Password is required");
-            
+
         return errors;
     }
-    
+
     private bool IsValidEmail(string email)
     {
         try
@@ -378,47 +562,11 @@ public class CompleteAuthService : IAuthService
             return false;
         }
     }
-    
+
     private bool IsStrongPassword(string password)
     {
-        return password.Any(char.IsUpper) && 
-               password.Any(char.IsLower) && 
+        return password.Any(char.IsUpper) &&
+               password.Any(char.IsLower) &&
                password.Any(char.IsDigit);
-    }
-    
-    public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
-    {
-        var userPassword = await _context.UserPasswords
-            .FirstOrDefaultAsync(up => up.UserId == userId);
-            
-        if (userPassword == null)
-        {
-            return false;
-        }
-        
-        // Verify current password
-        if (!BCrypt.Net.BCrypt.Verify(currentPassword, userPassword.PasswordHash))
-        {
-            return false;
-        }
-        
-        // Update to new password
-        userPassword.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, 12);
-        
-        await _context.SaveChangesAsync();
-        return true;
-    }
-    
-    public async Task<bool> VerifyUserPasswordAsync(int userId, string password)
-    {
-        var userPassword = await _context.UserPasswords
-            .FirstOrDefaultAsync(up => up.UserId == userId);
-            
-        if (userPassword == null)
-        {
-            return false;
-        }
-        
-        return BCrypt.Net.BCrypt.Verify(password, userPassword.PasswordHash);
     }
 }

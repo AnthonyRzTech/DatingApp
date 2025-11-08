@@ -1,121 +1,113 @@
 is_global = true
 build_property.TargetFramework = net9.0
-build_property.TargetFramework = net9.0
-build_property.TargetPlatformMinVersion = 
 build_property.TargetPlatformMinVersion = 
 build_property.UsingMicrosoftNETSdkWeb = true
-build_property.UsingMicrosoftNETSdkWeb = true
-build_property.ProjectTypeGuids = 
 build_property.ProjectTypeGuids = 
 build_property.InvariantGlobalization = 
-build_property.InvariantGlobalization = 
-build_property.PlatformNeutralAssembly = 
 build_property.PlatformNeutralAssembly = 
 build_property.EnforceExtendedAnalyzerRules = 
-build_property.EnforceExtendedAnalyzerRules = 
-build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = WebMatcha
 build_property.RootNamespace = WebMatcha
-build_property.ProjectDir = /home/anthrodr/.ssh/DatingApp/
+build_property.ProjectDir = /home/tony/DatingApp/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = /home/anthrodr/.ssh/DatingApp
+build_property.MSBuildProjectDirectory = /home/tony/DatingApp
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/App.razor]
+[/home/tony/DatingApp/Components/App.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Layout/AuthNavMenu.razor]
+[/home/tony/DatingApp/Components/Layout/AuthNavMenu.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvQXV0aE5hdk1lbnUucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/AccountSettings.razor]
+[/home/tony/DatingApp/Components/Pages/AccountSettings.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BY2NvdW50U2V0dGluZ3MucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Browse.razor]
+[/home/tony/DatingApp/Components/Pages/Browse.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ccm93c2UucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Chat.razor]
+[/home/tony/DatingApp/Components/Pages/Chat.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9DaGF0LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Error.razor]
+[/home/tony/DatingApp/Components/Pages/Error.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9FcnJvci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/ForgotPassword.razor]
+[/home/tony/DatingApp/Components/Pages/ForgotPassword.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Gb3Jnb3RQYXNzd29yZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Home.razor]
+[/home/tony/DatingApp/Components/Pages/Home.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ib21lLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Login.razor]
+[/home/tony/DatingApp/Components/Pages/Login.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Mb2dpbi5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Matches.razor]
+[/home/tony/DatingApp/Components/Pages/Matches.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9NYXRjaGVzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Notifications.razor]
+[/home/tony/DatingApp/Components/Pages/Notifications.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ob3RpZmljYXRpb25zLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Profile.razor]
+[/home/tony/DatingApp/Components/Pages/Profile.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Qcm9maWxlLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/ProfileEdit.razor]
+[/home/tony/DatingApp/Components/Pages/ProfileEdit.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Qcm9maWxlRWRpdC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Register.razor]
+[/home/tony/DatingApp/Components/Pages/Register.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9SZWdpc3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/ResetPassword.razor]
+[/home/tony/DatingApp/Components/Pages/ResetPassword.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9SZXNldFBhc3N3b3JkLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/Search.razor]
+[/home/tony/DatingApp/Components/Pages/Search.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9TZWFyY2gucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/TestLogin.razor]
+[/home/tony/DatingApp/Components/Pages/TestLogin.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9UZXN0TG9naW4ucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Pages/VerifyEmail.razor]
+[/home/tony/DatingApp/Components/Pages/VerifyEmail.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9WZXJpZnlFbWFpbC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Routes.razor]
+[/home/tony/DatingApp/Components/Routes.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Sb3V0ZXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Shared/AuthRequired.razor]
+[/home/tony/DatingApp/Components/Shared/AuthRequired.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TaGFyZWQvQXV0aFJlcXVpcmVkLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/_Imports.razor]
+[/home/tony/DatingApp/Components/_Imports.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9fSW1wb3J0cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[/home/anthrodr/.ssh/DatingApp/Components/Layout/MainLayout.razor]
+[/home/tony/DatingApp/Components/Layout/MainLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvTWFpbkxheW91dC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-6u3x40lbop
 
-[/home/anthrodr/.ssh/DatingApp/Components/Layout/NavMenu.razor]
+[/home/tony/DatingApp/Components/Layout/NavMenu.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvTmF2TWVudS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-6nyz910jn1

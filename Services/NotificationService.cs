@@ -1,109 +1,125 @@
-using Microsoft.EntityFrameworkCore;
-using WebMatcha.Data;
+using Npgsql;
+using Dapper;
 using WebMatcha.Models;
 
 namespace WebMatcha.Services;
 
+/// <summary>
+/// NotificationService - Refactoré avec requêtes SQL manuelles
+/// </summary>
 public class NotificationService
 {
-    private readonly MatchaDbContext _context;
-    
-    public NotificationService(MatchaDbContext context)
+    private readonly string _connectionString;
+
+    public NotificationService(IConfiguration configuration)
     {
-        _context = context;
+        _connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+            ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=q";
     }
-    
+
     public async Task<Notification> CreateNotificationAsync(int userId, string type, string message)
     {
-        var notification = new Notification
+        const string sql = @"
+            INSERT INTO notifications (user_id, type, message, is_read, created_at)
+            VALUES (@UserId, @Type, @Message, false, @CreatedAt)
+            RETURNING id, user_id AS UserId, type, message, is_read AS IsRead, created_at AS CreatedAt
+        ";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var notification = await connection.QueryFirstAsync<Notification>(sql, new
         {
             UserId = userId,
             Type = type,
             Message = message,
-            IsRead = false,
             CreatedAt = DateTime.UtcNow
-        };
-        
-        _context.Notifications.Add(notification);
-        await _context.SaveChangesAsync();
-        
+        });
+
         return notification;
     }
-    
+
     public async Task<List<Notification>> GetUserNotificationsAsync(int userId, bool unreadOnly = false)
     {
-        var query = _context.Notifications
-            .Where(n => n.UserId == userId);
-        
+        var sql = @"
+            SELECT
+                id, user_id AS UserId, type, message, is_read AS IsRead, created_at AS CreatedAt
+            FROM notifications
+            WHERE user_id = @UserId
+        ";
+
         if (unreadOnly)
         {
-            query = query.Where(n => !n.IsRead);
+            sql += " AND is_read = false";
         }
-        
-        return await query
-            .OrderByDescending(n => n.CreatedAt)
-            .ToListAsync();
+
+        sql += " ORDER BY created_at DESC";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var notifications = await connection.QueryAsync<Notification>(sql, new { UserId = userId });
+        return notifications.ToList();
     }
-    
+
     public async Task<int> GetUnreadCountAsync(int userId)
     {
-        return await _context.Notifications
-            .CountAsync(n => n.UserId == userId && !n.IsRead);
+        const string sql = "SELECT COUNT(*) FROM notifications WHERE user_id = @UserId AND is_read = false";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        return await connection.ExecuteScalarAsync<int>(sql, new { UserId = userId });
     }
-    
+
     public async Task MarkAsReadAsync(int notificationId)
     {
-        var notification = await _context.Notifications.FindAsync(notificationId);
-        if (notification != null)
-        {
-            notification.IsRead = true;
-            await _context.SaveChangesAsync();
-        }
+        const string sql = "UPDATE notifications SET is_read = true WHERE id = @NotificationId";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(sql, new { NotificationId = notificationId });
     }
-    
+
     public async Task MarkAllAsReadAsync(int userId)
     {
-        var notifications = await _context.Notifications
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .ToListAsync();
-        
-        foreach (var notification in notifications)
-        {
-            notification.IsRead = true;
-        }
-        
-        await _context.SaveChangesAsync();
+        const string sql = "UPDATE notifications SET is_read = true WHERE user_id = @UserId AND is_read = false";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(sql, new { UserId = userId });
     }
-    
+
     public async Task DeleteNotificationAsync(int notificationId)
     {
-        var notification = await _context.Notifications.FindAsync(notificationId);
-        if (notification != null)
-        {
-            _context.Notifications.Remove(notification);
-            await _context.SaveChangesAsync();
-        }
+        const string sql = "DELETE FROM notifications WHERE id = @NotificationId";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(sql, new { NotificationId = notificationId });
     }
-    
+
     public async Task DeleteAllNotificationsAsync(int userId)
     {
-        var notifications = await _context.Notifications
-            .Where(n => n.UserId == userId)
-            .ToListAsync();
-        
-        _context.Notifications.RemoveRange(notifications);
-        await _context.SaveChangesAsync();
+        const string sql = "DELETE FROM notifications WHERE user_id = @UserId";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(sql, new { UserId = userId });
     }
-    
+
     public async Task DeleteOldNotificationsAsync(int daysToKeep = 30)
     {
+        const string sql = "DELETE FROM notifications WHERE created_at < @CutoffDate";
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
         var cutoffDate = DateTime.UtcNow.AddDays(-daysToKeep);
-        
-        var oldNotifications = await _context.Notifications
-            .Where(n => n.CreatedAt < cutoffDate)
-            .ToListAsync();
-        
-        _context.Notifications.RemoveRange(oldNotifications);
-        await _context.SaveChangesAsync();
+        await connection.ExecuteAsync(sql, new { CutoffDate = cutoffDate });
     }
 }

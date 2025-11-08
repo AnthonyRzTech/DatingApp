@@ -109,10 +109,10 @@ else
     {
         try
         {
-            isAuthenticated = ServerSession.IsAuthenticated();
+            isAuthenticated = await ServerSession.IsAuthenticatedAsync();
             if (isAuthenticated)
             {
-                currentUsername = ServerSession.GetCurrentUsername() ?? "User";
+                currentUsername = await ServerSession.GetCurrentUsernameAsync() ?? "User";
             }
         }
         catch (Exception)
@@ -120,25 +120,23 @@ else
             isAuthenticated = false;
             currentUsername = "";
         }
-        
-        await Task.CompletedTask; // Pour satisfaire l'async
     }
     
     private async Task HandleLogout()
     {
         try
         {
-            var userId = ServerSession.GetCurrentUserId();
+            var userId = await ServerSession.GetCurrentUserIdAsync();
             if (userId.HasValue)
             {
                 await AuthService.LogoutAsync(userId.Value);
             }
-            
-            ServerSession.ClearSession();
-            
+
+            await ServerSession.ClearSessionAsync();
+
             isAuthenticated = false;
             currentUsername = "";
-            
+
             Navigation.NavigateTo("/login");
         }
         catch (Exception)

@@ -4,8 +4,7 @@
 @using Microsoft.AspNetCore.Http
 @inject CompleteAuthService AuthService
 @inject NavigationManager Navigation
-@inject IHttpContextAccessor HttpContextAccessor
-@inject ServerSessionService SessionService
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Login - WebMatcha</PageTitle>
@@ -104,32 +103,48 @@
         try
         {
             var loginRequest = new LoginRequest { Username = username, Password = password };
-            Console.WriteLine($"Attempting login for: {username}");
-            
+
             var result = await AuthService.LoginAsync(loginRequest);
-            
+
             if (result.Success && result.User != null)
             {
-                // Set session using SessionService
-                SessionService.SetCurrentUser(result.User);
-                Console.WriteLine($"Session set for user: {result.User.Username}");
-                
                 successMessage = "Login successful! Redirecting...";
                 StateHasChanged();
-                
-                await Task.Delay(500);
-                // Force navigation to browse page after login
-                Navigation.NavigateTo("/browse", forceLoad: true);
+
+                // Submit to server-side endpoint via form POST
+                // This allows session to be set properly before response starts
+                await JS.InvokeVoidAsync("eval", $@"
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/auth/login';
+
+                    const user = document.createElement('input');
+                    user.name = 'username';
+                    user.value = {System.Text.Json.JsonSerializer.Serialize(username)};
+                    form.appendChild(user);
+
+                    const pass = document.createElement('input');
+                    pass.name = 'password';
+                    pass.value = {System.Text.Json.JsonSerializer.Serialize(password)};
+                    form.appendChild(pass);
+
+                    const redir = document.createElement('input');
+                    redir.name = 'redirect';
+                    redir.value = '/browse';
+                    form.appendChild(redir);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                ");
             }
             else
             {
                 errorMessage = result.Errors.FirstOrDefault() ?? "Login failed";
-                Console.WriteLine($"Login failed: {errorMessage}");
             }
         }
         catch (Exception ex)
         {
-            errorMessage = "An error occurred during login. Please try again.";
+            errorMessage = $"An error occurred during login: {ex.Message}";
             Console.WriteLine($"Login error: {ex}");
         }
         finally

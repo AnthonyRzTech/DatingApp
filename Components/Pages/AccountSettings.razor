@@ -2,14 +2,11 @@
 @using WebMatcha.Services
 @using WebMatcha.Models
 @using WebMatcha.Components.Shared
-@using WebMatcha.Data
-@using Microsoft.EntityFrameworkCore
 @inject ServerSessionService SessionService
 @inject UserService UserService
 @inject CompleteAuthService AuthService
 @inject IEmailService EmailService
 @inject NavigationManager Navigation
-@inject IDbContextFactory<MatchaDbContext> DbFactory
 @rendermode InteractiveServer
 
 <PageTitle>Account Settings - WebMatcha</PageTitle>
@@ -488,43 +485,50 @@
     private PasswordChange passwordChange = new();
     private PrivacySettings privacySettings = new();
     private NotificationSettings notificationSettings = new();
-    
-    protected override async Task OnInitializedAsync()
+    private bool isLoadingUser = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var userId = SessionService.GetCurrentUserId();
-        if (userId.HasValue)
+        if (firstRender)
         {
-            currentUser = await UserService.GetUserByIdAsync(userId.Value);
-            if (currentUser != null)
+            var userId = await SessionService.GetCurrentUserIdAsync();
+            if (userId.HasValue)
             {
-                accountInfo = new AccountInfo
+                currentUser = await UserService.GetUserByIdAsync(userId.Value);
+                if (currentUser != null)
                 {
-                    Username = currentUser.Username,
-                    FirstName = currentUser.FirstName,
-                    LastName = currentUser.LastName,
-                    BirthDate = currentUser.BirthDate
-                };
-                
-                // Load user preferences
-                // TODO: Load from database
-                privacySettings = new PrivacySettings
-                {
-                    ShowOnline = true,
-                    ShowLastSeen = true,
-                    ShowLocation = true,
-                    ShowInSearch = true
-                };
-                
-                notificationSettings = new NotificationSettings
-                {
-                    EmailNewMatch = true,
-                    EmailNewMessage = true,
-                    EmailProfileView = false,
-                    PushNewMatch = true,
-                    PushNewMessage = true,
-                    PushProfileView = false
-                };
+                    accountInfo = new AccountInfo
+                    {
+                        Username = currentUser.Username,
+                        FirstName = currentUser.FirstName,
+                        LastName = currentUser.LastName,
+                        BirthDate = currentUser.BirthDate
+                    };
+
+                    // Load user preferences
+                    // TODO: Load from database
+                    privacySettings = new PrivacySettings
+                    {
+                        ShowOnline = true,
+                        ShowLastSeen = true,
+                        ShowLocation = true,
+                        ShowInSearch = true
+                    };
+
+                    notificationSettings = new NotificationSettings
+                    {
+                        EmailNewMatch = true,
+                        EmailNewMessage = true,
+                        EmailProfileView = false,
+                        PushNewMatch = true,
+                        PushNewMessage = true,
+                        PushProfileView = false
+                    };
+                }
             }
+
+            isLoadingUser = false;
+            StateHasChanged();
         }
     }
     
@@ -545,7 +549,7 @@
                 successMessage = "Account information updated successfully!";
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             errorMessage = "Failed to update account information.";
         }
@@ -577,10 +581,10 @@
     {
         isLoading = true;
         errorMessage = "";
-        
+
         try
         {
-            if (currentUser != null && !string.IsNullOrEmpty(emailChange.NewEmail) 
+            if (currentUser != null && !string.IsNullOrEmpty(emailChange.NewEmail)
                 && !string.IsNullOrEmpty(emailChange.Password))
             {
                 // Verify password first
@@ -590,24 +594,23 @@
                     errorMessage = "Incorrect password.";
                     return;
                 }
-                
+
                 // Check if email is already in use
-                using var context = await DbFactory.CreateDbContextAsync();
-                var emailExists = await context.Users.AnyAsync(u => u.Email == emailChange.NewEmail && u.Id != currentUser.Id);
-                if (emailExists)
+                var existingUser = await UserService.GetUserByEmailAsync(emailChange.NewEmail);
+                if (existingUser != null && existingUser.Id != currentUser.Id)
                 {
                     errorMessage = "This email is already in use.";
                     return;
                 }
-                
+
                 // Send verification email
                 var token = Guid.NewGuid().ToString();
                 await EmailService.SendEmailChangeVerificationAsync(emailChange.NewEmail, currentUser.Username, token);
-                
+
                 // For now, we'll just update the email directly
                 // In production, you'd want to store this in a pending changes table
                 // and verify through the email link
-                
+
                 successMessage = "Email change request sent. Please check your new email inbox for verification.";
                 emailChange = new EmailChangeForm();
             }
@@ -742,7 +745,7 @@
             errorMessage = "Please enter your password to confirm.";
             return;
         }
-        
+
         try
         {
             // Verify password
@@ -752,23 +755,16 @@
                 errorMessage = "Incorrect password.";
                 return;
             }
-            
+
             // Deactivate account
-            using var context = await DbFactory.CreateDbContextAsync();
-            var user = await context.Users.FindAsync(currentUser.Id);
-            if (user != null)
-            {
-                user.IsActive = false;
-                user.DeactivatedAt = DateTime.UtcNow;
-                await context.SaveChangesAsync();
-                
-                // Log out user
-                await AuthService.LogoutAsync(currentUser.Id);
-                SessionService.ClearSession();
-                
-                showDeactivateModal = false;
-                Navigation.NavigateTo("/");
-            }
+            await UserService.DeactivateUserAsync(currentUser.Id);
+
+            // Log out user
+            await AuthService.LogoutAsync(currentUser.Id);
+            await SessionService.ClearSessionAsync();
+
+            showDeactivateModal = false;
+            Navigation.NavigateTo("/");
         }
         catch (Exception ex)
         {
@@ -784,7 +780,7 @@
             errorMessage = "Please type DELETE and enter your password to confirm.";
             return;
         }
-        
+
         try
         {
             // Verify password
@@ -794,56 +790,15 @@
                 errorMessage = "Incorrect password.";
                 return;
             }
-            
-            // Delete account permanently
-            using var context = await DbFactory.CreateDbContextAsync();
-            var user = await context.Users.FindAsync(currentUser.Id);
-                
-            if (user != null)
-            {
-                // Delete all related data using direct queries
-                // Delete likes
-                var likes = context.Likes.Where(l => l.LikerId == currentUser.Id || l.LikedId == currentUser.Id);
-                context.RemoveRange(likes);
-                
-                // Delete messages
-                var messages = context.Messages.Where(m => m.SenderId == currentUser.Id || m.ReceiverId == currentUser.Id);
-                context.RemoveRange(messages);
-                
-                // Delete notifications
-                var notifications = context.Notifications.Where(n => n.UserId == currentUser.Id);
-                context.RemoveRange(notifications);
-                
-                // Delete profile views
-                var profileViews = context.ProfileViews.Where(pv => pv.ViewerId == currentUser.Id || pv.ViewedId == currentUser.Id);
-                context.RemoveRange(profileViews);
-                
-                // Delete reports
-                var reports = context.Reports.Where(r => r.ReporterId == currentUser.Id || r.ReportedId == currentUser.Id);
-                context.RemoveRange(reports);
-                
-                // Delete blocks
-                var blocks = context.Blocks.Where(b => b.BlockerId == currentUser.Id || b.BlockedId == currentUser.Id);
-                context.RemoveRange(blocks);
-                
-                // Delete user password
-                var userPassword = await context.UserPasswords.FirstOrDefaultAsync(up => up.UserId == currentUser.Id);
-                if (userPassword != null)
-                {
-                    context.Remove(userPassword);
-                }
-                
-                // Delete user
-                context.Remove(user);
-                
-                await context.SaveChangesAsync();
-                
-                // Clear session
-                SessionService.ClearSession();
-                
-                showDeleteModal = false;
-                Navigation.NavigateTo("/");
-            }
+
+            // Delete account permanently using service
+            await UserService.DeleteUserCompletelyAsync(currentUser.Id);
+
+            // Clear session
+            await SessionService.ClearSessionAsync();
+
+            showDeleteModal = false;
+            Navigation.NavigateTo("/");
         }
         catch (Exception ex)
         {

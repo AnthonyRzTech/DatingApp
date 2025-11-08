@@ -1,13 +1,10 @@
 @page "/browse"
 @using WebMatcha.Services
 @using WebMatcha.Models
-@using Microsoft.EntityFrameworkCore
-@using WebMatcha.Data
 @using WebMatcha.Components.Shared
 @inject UserService UserService
 @inject MatchingService MatchingService
 @inject NavigationManager Navigation
-@inject IDbContextFactory<MatchaDbContext> DbFactory
 @inject ServerSessionService SessionService
 @rendermode InteractiveServer
 
@@ -160,27 +157,33 @@
     private int minFame = 0;
     private string sortBy = "distance";
     private int? currentUserId;
-    
-    protected override async Task OnInitializedAsync()
+    private bool isLoading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Get current user from session
-        currentUserId = SessionService.GetCurrentUserId();
-        if (!currentUserId.HasValue)
+        if (firstRender)
         {
-            // If not logged in, redirect to login
-            Navigation.NavigateTo("/login");
-            return;
+            // Get current user from session
+            currentUserId = await SessionService.GetCurrentUserIdAsync();
+            if (!currentUserId.HasValue)
+            {
+                // If not logged in, redirect to login
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            // Check if user has completed profile
+            var currentUser = await UserService.GetUserByIdAsync(currentUserId.Value);
+            if (currentUser != null && string.IsNullOrEmpty(currentUser.Biography))
+            {
+                Navigation.NavigateTo("/profile/edit");
+                return;
+            }
+
+            await LoadUsers();
+            isLoading = false;
+            StateHasChanged();
         }
-        
-        // Check if user has completed profile
-        var currentUser = await UserService.GetUserByIdAsync(currentUserId.Value);
-        if (currentUser != null && string.IsNullOrEmpty(currentUser.Biography))
-        {
-            Navigation.NavigateTo("/profile/edit");
-            return;
-        }
-        
-        await LoadUsers();
     }
     
     private async Task LoadUsers()

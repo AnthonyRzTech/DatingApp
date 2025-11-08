@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj": {}
+    "/home/tony/DatingApp/WebMatcha.csproj": {}
   },
   "projects": {
-    "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj": {
+    "/home/tony/DatingApp/WebMatcha.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj",
+        "projectUniqueName": "/home/tony/DatingApp/WebMatcha.csproj",
         "projectName": "WebMatcha",
-        "projectPath": "/home/anthrodr/.ssh/DatingApp/WebMatcha.csproj",
-        "packagesPath": "/home/anthrodr/.nuget/packages/",
-        "outputPath": "/home/anthrodr/.ssh/DatingApp/obj/",
+        "projectPath": "/home/tony/DatingApp/WebMatcha.csproj",
+        "packagesPath": "/home/tony/.nuget/packages/",
+        "outputPath": "/home/tony/DatingApp/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/anthrodr/.nuget/NuGet/NuGet.Config"
+          "/home/tony/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -53,13 +53,13 @@
               "target": "Package",
               "version": "[4.0.3, )"
             },
+            "Dapper": {
+              "target": "Package",
+              "version": "[2.1.66, )"
+            },
             "DotNetEnv": {
               "target": "Package",
               "version": "[3.1.1, )"
-            },
-            "EFCore.NamingConventions": {
-              "target": "Package",
-              "version": "[9.0.0, )"
             },
             "FluentValidation": {
               "target": "Package",
@@ -73,21 +73,9 @@
               "target": "Package",
               "version": "[9.0.8, )"
             },
-            "Microsoft.EntityFrameworkCore.Design": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
-            "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
-            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+            "Npgsql": {
               "target": "Package",
               "version": "[9.0.4, )"
-            },
-            "Npgsql.EntityFrameworkCore.PostgreSQL.Design": {
-              "target": "Package",
-              "version": "[1.1.0, )"
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
@@ -113,7 +101,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.111/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

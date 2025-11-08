@@ -10,9 +10,19 @@ public interface IPhotoService
 public class PhotoService : IPhotoService
 {
     private readonly string _uploadPath;
-    private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
+    private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private readonly string[] _allowedMimeTypes = { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
     private readonly long _maxFileSize = 5 * 1024 * 1024; // 5MB
-    
+
+    // Magic numbers (file signatures) for image validation
+    private static readonly Dictionary<string, byte[][]> ImageSignatures = new()
+    {
+        { "image/jpeg", new[] { new byte[] { 0xFF, 0xD8, 0xFF } } },
+        { "image/png", new[] { new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A } } },
+        { "image/gif", new[] { new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 }, new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 } } },
+        { "image/webp", new[] { new byte[] { 0x52, 0x49, 0x46, 0x46 } } }
+    };
+
     public PhotoService(IWebHostEnvironment env)
     {
         _uploadPath = Path.Combine(env.WebRootPath, "uploads", "photos");
@@ -76,14 +86,51 @@ public class PhotoService : IPhotoService
         {
             return false;
         }
-        
+
         // Check file size
-        if (photoStream.Length > _maxFileSize)
+        if (photoStream.Length == 0 || photoStream.Length > _maxFileSize)
         {
             return false;
         }
-        
-        // Basic validation passed
+
+        // Validate file signature (magic numbers) to prevent fake extensions
+        if (!ValidateImageSignature(photoStream))
+        {
+            return false;
+        }
+
         return true;
+    }
+
+    private bool ValidateImageSignature(Stream stream)
+    {
+        try
+        {
+            stream.Position = 0;
+            var headerBytes = new byte[8];
+            var bytesRead = stream.Read(headerBytes, 0, headerBytes.Length);
+            stream.Position = 0;
+
+            if (bytesRead == 0)
+                return false;
+
+            // Check against known image signatures
+            foreach (var signatures in ImageSignatures.Values)
+            {
+                foreach (var signature in signatures)
+                {
+                    if (headerBytes.Take(signature.Length).SequenceEqual(signature))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

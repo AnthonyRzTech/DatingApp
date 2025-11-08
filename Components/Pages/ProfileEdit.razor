@@ -2,14 +2,11 @@
 @using WebMatcha.Services
 @using WebMatcha.Models
 @using Microsoft.AspNetCore.Http
-@using Microsoft.EntityFrameworkCore
-@using WebMatcha.Data
 @using WebMatcha.Components.Shared
 @inject UserService UserService
 @inject IPhotoService PhotoService
 @inject ServerSessionService SessionService
 @inject NavigationManager Navigation
-@inject IDbContextFactory<MatchaDbContext> DbFactory
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -298,52 +295,44 @@
     private string uploadError = "";
     private string newTag = "";
     private List<string> popularTags = new() { "travel", "music", "movies", "sports", "reading", "cooking", "photography", "art", "fitness", "gaming" };
-    
-    protected override async Task OnInitializedAsync()
-    {
-        var userId = SessionService.GetCurrentUserId();
-        if (!userId.HasValue)
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-        
-        user = await UserService.GetUserByIdAsync(userId.Value);
-        if (user == null)
-        {
-            Navigation.NavigateTo("/");
-        }
-    }
-    
+    private bool isLoadingProfile = true;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            var userId = await SessionService.GetCurrentUserIdAsync();
+            if (!userId.HasValue)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            user = await UserService.GetUserByIdAsync(userId.Value);
+            if (user == null)
+            {
+                Navigation.NavigateTo("/");
+            }
+
             // Register this component instance for geolocation callbacks
             await JS.InvokeVoidAsync("registerLocationComponent", DotNetObjectReference.Create(this));
+
+            isLoadingProfile = false;
+            StateHasChanged();
         }
     }
     
     private async Task SaveBasicInfo()
     {
         if (isSubmitting || user == null) return;
-        
+
         isSubmitting = true;
         errorMessage = "";
-        
+
         try
         {
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.Biography = user.Biography;
-                dbUser.Gender = user.Gender;
-                dbUser.SexualPreference = user.SexualPreference;
-                await context.SaveChangesAsync();
-                
-                successMessage = "Profile updated successfully!";
-            }
+            await UserService.UpdateUserAsync(user);
+            successMessage = "Profile updated successfully!";
         }
         catch (Exception ex)
         {
@@ -359,10 +348,10 @@
     private async Task UploadProfilePhoto(InputFileChangeEventArgs e)
     {
         if (user == null || isUploadingProfile) return;
-        
+
         var file = e.File;
         if (file == null) return;
-        
+
         // Validate file type
         var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
@@ -370,38 +359,32 @@
             uploadError = "Please upload a valid image file (JPEG, PNG, or GIF).";
             return;
         }
-        
+
         // Validate file size (5MB max)
         if (file.Size > 5 * 1024 * 1024)
         {
             uploadError = "File size must be less than 5MB.";
             return;
         }
-        
+
         isUploadingProfile = true;
         uploadError = "";
-        
+
         try
         {
             using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             var photoUrl = await PhotoService.UploadPhotoAsync(stream, file.Name, user.Id);
-            
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
+
+            // Delete old photo if it's not the default
+            if (!user.ProfilePhotoUrl.Contains("default-avatar"))
             {
-                // Delete old photo if it's not the default
-                if (!dbUser.ProfilePhotoUrl.Contains("default-avatar"))
-                {
-                    await PhotoService.DeletePhotoAsync(dbUser.ProfilePhotoUrl, user.Id);
-                }
-                
-                dbUser.ProfilePhotoUrl = photoUrl;
-                await context.SaveChangesAsync();
-                
-                user.ProfilePhotoUrl = photoUrl;
-                successMessage = "Profile photo updated successfully!";
+                await PhotoService.DeletePhotoAsync(user.ProfilePhotoUrl, user.Id);
             }
+
+            user.ProfilePhotoUrl = photoUrl;
+            await UserService.UpdateUserAsync(user);
+
+            successMessage = "Profile photo updated successfully!";
         }
         catch (Exception ex)
         {
@@ -417,10 +400,10 @@
     private async Task UploadAdditionalPhoto(InputFileChangeEventArgs e)
     {
         if (user == null || user.PhotoUrls.Count >= 5 || isUploadingAdditional) return;
-        
+
         var file = e.File;
         if (file == null) return;
-        
+
         // Validate file type
         var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
@@ -428,32 +411,26 @@
             uploadError = "Please upload a valid image file (JPEG, PNG, or GIF).";
             return;
         }
-        
+
         // Validate file size (5MB max)
         if (file.Size > 5 * 1024 * 1024)
         {
             uploadError = "File size must be less than 5MB.";
             return;
         }
-        
+
         isUploadingAdditional = true;
         uploadError = "";
-        
+
         try
         {
             using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             var photoUrl = await PhotoService.UploadPhotoAsync(stream, file.Name, user.Id);
-            
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.PhotoUrls.Add(photoUrl);
-                await context.SaveChangesAsync();
-                
-                user.PhotoUrls.Add(photoUrl);
-                successMessage = "Photo added successfully!";
-            }
+
+            user.PhotoUrls.Add(photoUrl);
+            await UserService.UpdateUserAsync(user);
+
+            successMessage = "Photo added successfully!";
         }
         catch (Exception ex)
         {
@@ -469,21 +446,15 @@
     private async Task DeletePhoto(string photoUrl)
     {
         if (user == null) return;
-        
+
         try
         {
             await PhotoService.DeletePhotoAsync(photoUrl, user.Id);
-            
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.PhotoUrls.Remove(photoUrl);
-                await context.SaveChangesAsync();
-                
-                user.PhotoUrls.Remove(photoUrl);
-                successMessage = "Photo deleted!";
-            }
+
+            user.PhotoUrls.Remove(photoUrl);
+            await UserService.UpdateUserAsync(user);
+
+            successMessage = "Photo deleted!";
         }
         catch (Exception ex)
         {
@@ -495,26 +466,19 @@
     private async Task AddTag()
     {
         if (user == null || string.IsNullOrWhiteSpace(newTag) || user.InterestTags.Count >= 10) return;
-        
+
         var tag = newTag.Trim().ToLower();
         if (user.InterestTags.Contains(tag))
         {
             newTag = "";
             return;
         }
-        
+
         try
         {
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.InterestTags.Add(tag);
-                await context.SaveChangesAsync();
-                
-                user.InterestTags.Add(tag);
-                newTag = "";
-            }
+            user.InterestTags.Add(tag);
+            await UserService.UpdateUserAsync(user);
+            newTag = "";
         }
         catch (Exception ex)
         {
@@ -526,18 +490,11 @@
     private async Task AddPopularTag(string tag)
     {
         if (user == null || user.InterestTags.Count >= 10 || user.InterestTags.Contains(tag)) return;
-        
+
         try
         {
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.InterestTags.Add(tag);
-                await context.SaveChangesAsync();
-                
-                user.InterestTags.Add(tag);
-            }
+            user.InterestTags.Add(tag);
+            await UserService.UpdateUserAsync(user);
         }
         catch (Exception ex)
         {
@@ -549,18 +506,11 @@
     private async Task RemoveTag(string tag)
     {
         if (user == null) return;
-        
+
         try
         {
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.InterestTags.Remove(tag);
-                await context.SaveChangesAsync();
-                
-                user.InterestTags.Remove(tag);
-            }
+            user.InterestTags.Remove(tag);
+            await UserService.UpdateUserAsync(user);
         }
         catch (Exception ex)
         {
@@ -585,22 +535,14 @@
     private async Task SaveLocation()
     {
         if (isSubmitting || user == null) return;
-        
+
         isSubmitting = true;
         errorMessage = "";
-        
+
         try
         {
-            using var context = await DbFactory.CreateDbContextAsync();
-            var dbUser = await context.Users.FindAsync(user.Id);
-            if (dbUser != null)
-            {
-                dbUser.Latitude = user.Latitude;
-                dbUser.Longitude = user.Longitude;
-                await context.SaveChangesAsync();
-                
-                successMessage = "Location updated successfully!";
-            }
+            await UserService.UpdateUserAsync(user);
+            successMessage = "Location updated successfully!";
         }
         catch (Exception ex)
         {

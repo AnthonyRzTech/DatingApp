@@ -261,18 +261,24 @@ else
     private List<User> likedByUsers = new();
     private List<User> viewedByUsers = new();
     private int? currentUserId;
-    
-    protected override async Task OnInitializedAsync()
+    private bool isLoading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        currentUserId = SessionService.GetCurrentUserId();
-        if (!currentUserId.HasValue)
+        if (firstRender)
         {
-            Navigation.NavigateTo("/login");
-            return;
+            currentUserId = await SessionService.GetCurrentUserIdAsync();
+            if (!currentUserId.HasValue)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+            await LoadProfile();
+            isLoading = false;
+            StateHasChanged();
         }
-        await LoadProfile();
     }
-    
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadProfile();

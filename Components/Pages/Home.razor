@@ -1,8 +1,6 @@
 ﻿@page "/"
 @using WebMatcha.Services
-@using WebMatcha.Data
-@using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<MatchaDbContext> DbFactory
+@inject UserService UserService
 @inject ServerSessionService SessionService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -163,17 +161,15 @@
     protected override async Task OnInitializedAsync()
     {
         // Check if user is authenticated and redirect to browse page
-        if (SessionService.IsAuthenticated())
+        if (await SessionService.IsAuthenticatedAsync())
         {
             Navigation.NavigateTo("/browse");
             return;
         }
-        
-        using var context = await DbFactory.CreateDbContextAsync();
-        
-        userCount = await context.Users.CountAsync();
-        matchCount = await context.Matches.CountAsync();
-        likeCount = await context.Likes.CountAsync();
-        notificationCount = await context.Notifications.CountAsync();
+
+        userCount = await UserService.GetUsersCountAsync();
+        matchCount = await UserService.GetMatchesCountAsync();
+        likeCount = await UserService.GetLikesCountAsync();
+        notificationCount = await UserService.GetNotificationsCountAsync();
     }
 }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WebMatcha")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22198c2a276e6c49bf2a116e470f15aa56e12cbf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+13baab98243a2da669e860ec08dffe1f01e2ad24")]
 [assembly: System.Reflection.AssemblyProductAttribute("WebMatcha")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WebMatcha")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
